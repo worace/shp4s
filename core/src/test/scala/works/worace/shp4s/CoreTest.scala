@@ -25,8 +25,6 @@ class CoreTest extends munit.FunSuite {
         println(rec)
         rec
       }
-    println(stream)
-    println(stream.compile)
-    println(stream.compile.toVector.unsafeRunSync())
+    println(stream.compile.toVector.unsafeRunSync().size)
   }
 }

@@ -48,14 +48,10 @@ object Core {
     (n: NullShape.type) => Attempt.successful(())
   )
 
-  val shapeDiscrim = discriminated[Shape]
-    .by(int32L)
-    .typecase(1, point)
-
   case class ShapeRecord(header: RecordHeader, shape: Shape)
   val shape = recordHeader.flatPrepend { header =>
     discriminated[Shape]
-      .by(uint8)
+      .by(int32L)
       .subcaseO(0) {
         case n: NullShape.type => Some(NullShape)
         case _ => None
@@ -71,6 +67,17 @@ object Core {
   val shpStream: StreamDecoder[ShapeRecord] = StreamDecoder
     .many(shape)
 
+  // val streamier: StreamDecoder[ShapeRecord] = for {
+  //   header <- StreamDecoder.once(header)
+  //   shape <- StreamDecoder.many(shape)
+  // } yield {
+  //   println("RUNNING STREAMIER")
+  //   println(header)
+  //   println("shape stream")
+  //   println(shape)
+  //   shape
+  // }
+
   val frames: StreamDecoder[ByteVector] = StreamDecoder
     .many(int32)
     .flatMap { numBytes => StreamDecoder.once(bytes(numBytes)) }
@@ -84,14 +91,18 @@ object Core {
   //     fs2.io.file.readAll[IO](filePath, blocker, 4096).through(frames.toPipeByte)
   //   }
 
+  val HEADER_SIZE = 100
   def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, ShapeRecord] = {
     fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
-      fs2.io.file.readAll[IO](path, blocker, 4096)
+      fs2.io.file
+        .readAll[IO](path, blocker, 4096)
+        .drop(HEADER_SIZE)
         .through(shpStream.toPipeByte)
     }
   }
 
   // val shape: Codec[Shape] = recordHeader.flatPrepend { case header =>
+  // TODO - header length is 16-bit words
   //   fixedSizeBytes(header.length, shapeDiscrim)
   // }
 
@@ -104,40 +115,48 @@ object Core {
   // 4               4                               4               8           8
   // 1 (Point Type), 10 (Point size - 16 bit words), 1 (Point Type), X (Double), Y (Double)
   def readHeader(bytes: Array[Byte]): Option[ShapefileHeader] = {
-    println("header codec")
-    println(header)
-    println(BitVector(bytes))
-    println(headerint.decode(BitVector(bytes)))
-
+    println(s"total size: ${bytes.size}")
     for {
       h <- header.decode(BitVector(bytes))
-      shp <- shape.decode(h.remainder)
+      shp1 <- shape.decode(h.remainder)
+      shp2 <- shape.decode(shp1.remainder)
+      shp3 <- shape.decode(shp2.remainder)
     } yield {
       println("header")
       println(h)
-      println("decoded shp ********")
-      println(shp)
+      println(s"used: ${(bytes.size - h.remainder.size / 8)}")
+      println(s"leftover: ${h.remainder.size / 8}")
+      println("decoded shp1 ********")
+      println(shp1)
+      println(s"leftover: ${shp1.remainder.size / 8}")
+      // point size should be 4+ 4 + 4 +8 + 8 = 28
+      println(s"used: ${(h.remainder.size - shp1.remainder.size) / 8}")
+      println("decoded shp2 ********")
+      println(shp2)
+      println(s"leftover: ${shp2.remainder.size / 8}")
+      println("SHP 3")
+      println(shp3)
     }
 
-    for {
-      h <- header.decode(BitVector(bytes))
-      rec <- recordHeader.decode(h.remainder)
-      p <- point.decode(rec.remainder)
-      rec2 <- recordHeader.decode(p.remainder)
-      p2 <- point.decode(rec2.remainder)
-    } yield {
-      println("header:")
-      println(h)
-      println("first rec:")
-      println(rec)
-      println("point contents:")
-      println(p)
+    // for {
+    //   h <- header.decode(BitVector(bytes))
+    //   rec <- recordHeader.decode(h.remainder)
+    //   p <- point.decode(rec.remainder)
+    //   rec2 <- recordHeader.decode(p.remainder)
+    //   p2 <- point.decode(rec2.remainder)
+    // } yield {
+    //   println("header:")
+    //   println(h)
+    //   println("first rec:")
+    //   println(rec)
+    //   println("point contents:")
+    //   println(p)
 
-      println("rec2")
-      println(rec2)
-      println("point2")
-      println(p2)
-    }
+    //   println("rec2")
+    //   println(rec2)
+    //   println("point2")
+    //   println(p2)
+    // }
     None
   }
 
