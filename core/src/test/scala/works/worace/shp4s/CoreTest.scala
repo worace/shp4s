@@ -13,4 +13,8 @@ class CoreTest extends munit.FunSuite {
     println(shpBytes)
     Core.readHeader(shpBytes)
   }
+
+  test("streaming points") {
+    
+  }
 }

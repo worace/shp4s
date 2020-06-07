@@ -51,7 +51,9 @@ lazy val core = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "org.scodec" %% "scodec-core" % "1.11.7"
+      "org.scodec" %% "scodec-core" % "1.11.7",
+      "org.scodec" %% "scodec-stream" % "2.0.0",
+      "co.fs2" %% "fs2-io" % "2.3.0"
     )
   )
 

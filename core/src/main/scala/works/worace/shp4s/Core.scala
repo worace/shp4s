@@ -5,6 +5,12 @@ import scodec._
 import scodec.codecs._
 import scodec.Attempt.Successful
 import shapeless.HNil
+import scodec.stream._
+import cats.effect.IO
+import scala.collection.immutable.{Stream => _, _}
+import cats.effect.Blocker
+import cats.effect.ContextShift
+import java.nio.file.Path
 
 case class ShapefileHeader()
 
@@ -38,20 +44,45 @@ object Core {
   val point = (doubleL :: doubleL).as[Point]
 
   val shapeDiscrim = discriminated[Shape]
-      .by(int32L)
-      .typecase(1, point)
+    .by(int32L)
+    .typecase(1, point)
 
-  case class ShapeRecordBody(shapeType: Int, contents: ByteVector)
+  case class ShapeRecord(header: RecordHeader, shape: Shape)
   val shape = recordHeader.flatPrepend { header =>
     discriminated[Shape]
       .by(uint8)
       .subcaseO(1) {
         case p: Point => Some(p)
-        case _ => None
-      } (point)
+        case _        => None
+      }(point)
       .hlist
-      // subcaseO(2) { case (nme, fld: StringField) => Some(nme -> fld); case _ => None } (cstring ~ cstring.as[StringField])
+  // subcaseO(2) { case (nme, fld: StringField) => Some(nme -> fld); case _ => None } (cstring ~ cstring.as[StringField])
+  }.as[ShapeRecord]
+
+  val shpStream: StreamDecoder[ShapeRecord] = StreamDecoder
+    .many(shape)
+
+  val frames: StreamDecoder[ByteVector] = StreamDecoder
+    .many(int32)
+    .flatMap { numBytes => StreamDecoder.once(bytes(numBytes)) }
+
+  val filePath = java.nio.file.Paths.get("path/to/file")
+
+  // implicit val csIO: ContextShift[IO] =
+  //   IO.contextShift(scala.concurrent.ExecutionContext.Implicits.global)
+  // val s: fs2.Stream[IO, ByteVector] =
+  //   fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
+  //     fs2.io.file.readAll[IO](filePath, blocker, 4096).through(frames.toPipeByte)
+  //   }
+
+  def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, ShapeRecord] = {
+    ???
+    fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
+      fs2.io.file.readAll[IO](path, blocker, 4096)
+        .through(shpStream.toPipeByte)
+    }
   }
+
   // val shape: Codec[Shape] = recordHeader.flatPrepend { case header =>
   //   fixedSizeBytes(header.length, shapeDiscrim)
   // }
