@@ -38,10 +38,15 @@ object Core {
 
   sealed trait Shape
   case class Point(x: Double, y: Double) extends Shape
+  case object NullShape extends Shape
 
-  case class RecordHeader(shapeType: Int, length: Int)
+  case class RecordHeader(recordNumber: Int, length: Int)
   val recordHeader = (int32 :: int32).as[RecordHeader]
   val point = (doubleL :: doubleL).as[Point]
+  val nullShape = ignore(0).exmap(
+    _ => Attempt.successful(NullShape),
+    (n: NullShape.type) => Attempt.successful(())
+  )
 
   val shapeDiscrim = discriminated[Shape]
     .by(int32L)
@@ -51,6 +56,10 @@ object Core {
   val shape = recordHeader.flatPrepend { header =>
     discriminated[Shape]
       .by(uint8)
+      .subcaseO(0) {
+        case n: NullShape.type => Some(NullShape)
+        case _ => None
+      } (nullShape)
       .subcaseO(1) {
         case p: Point => Some(p)
         case _        => None
@@ -76,7 +85,6 @@ object Core {
   //   }
 
   def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, ShapeRecord] = {
-    ???
     fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
       fs2.io.file.readAll[IO](path, blocker, 4096)
         .through(shpStream.toPipeByte)
