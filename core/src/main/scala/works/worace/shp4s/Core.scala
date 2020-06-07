@@ -37,8 +37,7 @@ object Core {
     mMin :: mMax
 
   case class BBox(xMin: Double, yMin: Double, xMax: Double, yMax: Double)
-  case class ZRange(zMin: Double, zMax: Double)
-  case class MRange(mMin: Double, mMax: Double)
+  case class RangedValues(min: Double, max: Double, values: Vector[Double])
   sealed trait Shape
   case object NullShape extends Shape
   case class Point(x: Double, y: Double) extends Shape
@@ -47,8 +46,9 @@ object Core {
   case class MultiPointZ(
     bbox: BBox,
     points: Vector[Point],
-    zRange: ZRange,
-    zValues: Vector[Double]
+    z: RangedValues,
+    // m: Option
+    // zValues: Vector[Double]
     // mRange: MRange,
     // mValues: Vector[Double]
   ) extends Shape
@@ -58,20 +58,17 @@ object Core {
   }
   val recordHeader = (int32 :: int32).as[RecordHeader]
   val bbox = (doubleL :: doubleL :: doubleL :: doubleL).as[BBox]
-  val zRange = (doubleL :: doubleL).as[ZRange]
-  val mRange = (doubleL :: doubleL).as[MRange]
+  def rangedValues(num: Int) = (doubleL :: doubleL :: vectorOfN(provide(num), doubleL)).as[RangedValues]
   val point = (doubleL :: doubleL).as[Point]
-  val nullShape = ignore(0).exmap(
-    _ => Attempt.successful(NullShape),
-    (n: NullShape.type) => Attempt.successful(())
-  )
+  val nullShape = provide(NullShape)
   val multiPoint = (bbox :: int32L :: vector(point)).as[MultiPoint]
   val multiPointZBody = int32L.flatZip { numPoints =>
     vectorOfN(provide(numPoints), point) ::
-    zRange :: vectorOfN(provide(numPoints), doubleL)
+    rangedValues(numPoints) //::
+    // fallback(mRange :: vectorOfN(provide(numPoints), doubleL), provide(Option.empty[MRange]))
   }.xmap(
     { case ((_numPoints, contents)) => contents },
-    { v: (Vector[Point] :: ZRange :: Vector[Double] :: HNil) =>
+    { v: (Vector[Point] :: RangedValues :: HNil) =>
       v match {
         case points :: rem => (points.size, v)
       }
