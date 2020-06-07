@@ -6,6 +6,7 @@ import cats.effect.{IO, ContextShift}
 import java.net.URL
 import java.nio.file.Path
 import scodec.bits.BitVector
+import works.worace.shp4s.Core.MultiPointZ
 
 case class Resource(url: URL) {
   def bytes: Array[Byte] = Files.readAllBytes(Paths.get(url.getPath))
@@ -18,7 +19,7 @@ object Resource {
 
 object TestFiles {
   val points = Resource("world-cities.shp")
-  val multiPoints = Resource("multipoint.shp")
+  val multiPointZ = Resource("multipointZ.shp")
 }
 
 class CoreTest extends munit.FunSuite {
@@ -38,7 +39,7 @@ class CoreTest extends munit.FunSuite {
     assertEquals(shapeTypes, Set("works.worace.shp4s.Core$Point"))
   }
 
-  test("multipoints") {
+  test("MultiPointZ") {
     import scodec.bits._
     import scodec._
     import scodec.codecs._
@@ -53,7 +54,7 @@ class CoreTest extends munit.FunSuite {
     println("******")
     for {
       shptype <- int32L.decode(rech.remainder)
-      body <- Core.multiPointZ.decode(shptype.remainder)
+      body <- fixedSizeBytes(rech.value.byteLength, Core.multiPointZ).decode(shptype.remainder)
       // bbox <- Core.bbox.decode(shptype.remainder)
       // points <- vectorOfN(int32L, Core.point).decode(bbox.remainder)
       // zrange <- Core.zRange.decode(points.remainder)
@@ -63,6 +64,10 @@ class CoreTest extends munit.FunSuite {
       // point <- Core.point.decode(numPoints.remainder)
     } yield {
       println(body)
+      println(body.value.bbox)
+      println(body.value.points)
+      println(body.value.z)
+      println(body.value.m)
       // println(s"shptyp: $shptype")
       // println(s"bbox: $bbox")
       // println(s"points: $points")
@@ -81,8 +86,10 @@ class CoreTest extends munit.FunSuite {
     // val mpz = Core.multiPointZ.decode(rech.remainder)
     // println(mpz)
 
-    // val mps = Core.readAllSync(TestFiles.multiPoints.path)
-    // println(mps)
+    val mpzs = Core.readAllSync(TestFiles.multiPointZ.path)
+    assertEquals(mpzs.size, 312)
+    val types = mpzs.map(_.shape.getClass.getName).toSet
+    assertEquals(types, Set("works.worace.shp4s.Core$MultiPointZ"))
     // Core.readHeader(TestFiles.multiPoints.bytes)
   }
 }

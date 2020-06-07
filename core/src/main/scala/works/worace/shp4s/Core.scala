@@ -38,6 +38,9 @@ object Core {
 
   case class BBox(xMin: Double, yMin: Double, xMax: Double, yMax: Double)
   case class RangedValues(min: Double, max: Double, values: Vector[Double])
+  object RangedValues {
+    val zero: RangedValues = RangedValues(0.0, 0.0, Vector())
+  }
   sealed trait Shape
   case object NullShape extends Shape
   case class Point(x: Double, y: Double) extends Shape
@@ -47,6 +50,7 @@ object Core {
     bbox: BBox,
     points: Vector[Point],
     z: RangedValues,
+    m: Option[RangedValues]
     // m: Option
     // zValues: Vector[Double]
     // mRange: MRange,
@@ -64,13 +68,19 @@ object Core {
   val multiPoint = (bbox :: int32L :: vector(point)).as[MultiPoint]
   val multiPointZBody = int32L.flatZip { numPoints =>
     vectorOfN(provide(numPoints), point) ::
-    rangedValues(numPoints) //::
-    // fallback(mRange :: vectorOfN(provide(numPoints), doubleL), provide(Option.empty[MRange]))
+    rangedValues(numPoints) ::
+    // TODO: Not sure using RangedValues.zero is right here -- should be None
+    // but it may never get called anyway because it's a unit codec?
+    optional(lookahead(rangedValues(numPoints).unit(RangedValues.zero)), rangedValues(numPoints))
   }.xmap(
     { case ((_numPoints, contents)) => contents },
-    { v: (Vector[Point] :: RangedValues :: HNil) =>
+    { v: (Vector[Point] :: RangedValues :: Option[RangedValues] :: HNil) =>
       v match {
-        case points :: rem => (points.size, v)
+        case points :: _ => {
+          (points.size, v)
+        //   (points.size, points :: zRange :: HNil)
+        //   // mrange
+        }
       }
     }
   )
