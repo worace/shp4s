@@ -232,30 +232,6 @@ object Core {
   val shpStream: StreamDecoder[ShapeRecord] = StreamDecoder
     .many(shape)
 
-  // val streamier: StreamDecoder[ShapeRecord] = for {
-  //   header <- StreamDecoder.once(header)
-  //   shape <- StreamDecoder.many(shape)
-  // } yield {
-  //   println("RUNNING STREAMIER")
-  //   println(header)
-  //   println("shape stream")
-  //   println(shape)
-  //   shape
-  // }
-
-  // val frames: StreamDecoder[ByteVector] = StreamDecoder
-  //   .many(int32)
-  //   .flatMap { numBytes => StreamDecoder.once(bytes(numBytes)) }
-
-  // val filePath = java.nio.file.Paths.get("path/to/file")
-
-  // implicit val csIO: ContextShift[IO] =
-  //   IO.contextShift(scala.concurrent.ExecutionContext.Implicits.global)
-  // val s: fs2.Stream[IO, ByteVector] =
-  //   fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
-  //     fs2.io.file.readAll[IO](filePath, blocker, 4096).through(frames.toPipeByte)
-  //   }
-
   val HEADER_SIZE = 100
   def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, ShapeRecord] = {
     fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
@@ -269,11 +245,6 @@ object Core {
   def readAllSync(path: Path)(implicit cs: ContextShift[IO]): Vector[ShapeRecord] = {
     streamShapefile(path).compile.toVector.unsafeRunSync()
   }
-
-  // val shape: Codec[Shape] = recordHeader.flatPrepend { case header =>
-  // TODO - header length is 16-bit words
-  //   fixedSizeBytes(header.length, shapeDiscrim)
-  // }
 
   // Header
   // Records:
@@ -310,7 +281,6 @@ object Core {
     println(r)
 
     header.decode(BitVector(bytes)).toTry.map(_.value)
-
   }
 }
 
@@ -318,7 +288,7 @@ object Core {
 // Types
 // * [X] Point
 // * [ ] MultiPoint
-// * [ ] PolyLine
-// * [ ] MultiPointZ
+// * [X] PolyLine
+// * [X] MultiPointZ
 // * [ ] MultiPointM
 // * [ ] MultiPointM
