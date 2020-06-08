@@ -12,13 +12,17 @@ import cats.effect.Blocker
 import cats.effect.ContextShift
 import java.nio.file.Path
 import shapeless.::
+import scala.util.Try
 
-case class ShapefileHeader()
+case class ShapefileHeader(
+  length: Int, shapeType: Int, xMin: Double, xMax: Double, yMin: Double, yMax: Double,
+  zMin: Double, zMax: Double, mMin: Double, mMax: Double
+)
 
 object Core {
-  val version: Codec[Unit] = constant(hex"e8030000")
-  val emptyInt: Codec[Unit] = constant(hex"0000000")
   val fileCode: Codec[Unit] = constant(hex"000270a")
+  val emptyInt: Codec[Unit] = constant(hex"0000000")
+  val version: Codec[Unit] = constant(hex"e8030000")
   val fileLength: Codec[Int] = int32
   val shapeType: Codec[Int] = int32L
   val xMin: Codec[Double] = doubleL
@@ -30,11 +34,19 @@ object Core {
   val mMin: Codec[Double] = doubleL
   val mMax: Codec[Double] = doubleL
 
-  val header = fileCode :: emptyInt :: emptyInt ::
+  val header = (fileCode :: emptyInt :: emptyInt ::
     emptyInt :: emptyInt :: emptyInt ::
     fileLength :: version :: shapeType ::
     xMin :: yMin :: xMax :: yMax :: zMin :: zMax ::
-    mMin :: mMax
+    mMin :: mMax).xmap(
+    { case (_fc :: _ :: _ :: _ :: _ :: _ :: length :: _version ::
+      shapeType :: xMin :: yMin :: xMax :: yMax :: zMin :: zMax :: mMin :: mMax :: HNil) =>
+      ShapefileHeader(length, shapeType, xMin, xMax, yMin, yMax, zMin, zMax, mMin, mMax)
+    },
+      (h: ShapefileHeader) => () :: () :: () :: () :: () :: () :: h.length :: () ::
+        h.shapeType ::
+        h.xMin :: h.yMin :: h.xMax :: h.yMax :: h.zMin :: h.zMax :: h.mMin :: h.mMax :: HNil
+  )
 
   case class BBox(xMin: Double, yMin: Double, xMax: Double, yMax: Double)
   case class RangedValues(min: Double, max: Double, values: Vector[Double])
@@ -59,6 +71,7 @@ object Core {
 
   case class RecordHeader(recordNumber: Int, wordsLength: Int) {
     def byteLength: Int = wordsLength * 2
+    def bitLength: Int = byteLength * 8
   }
   val recordHeader = (int32 :: int32).as[RecordHeader]
   val bbox = (doubleL :: doubleL :: doubleL :: doubleL).as[BBox]
@@ -85,6 +98,76 @@ object Core {
     }
   )
   val multiPointZ = (bbox :: multiPointZBody).as[MultiPointZ]
+
+  def polyLinePartsDecoder[P](offsets: Vector[Int], pointCodec: Codec[P]): Codec[Vector[Vector[P]]] = new Codec[Vector[Vector[P]]] {
+    def decode(bits: BitVector): Attempt[DecodeResult[Vector[Vector[P]]]] = {
+      println("POINT at 0")
+      println("all bits:")
+      println(bits)
+      val pointr = pointCodec.decode(bits)
+      // println(pointr)
+      // println(s"point used bits = ${pointr.map(r => bits.size - r.remainder.size)}")
+
+      val bitOffsets = offsets.drop(1).map(_ - 1).map(_ * 8).prepended(0)
+      println(bitOffsets)
+
+
+      val partResults: Vector[Attempt[DecodeResult[Vector[P]]]] = bitOffsets.sliding(2).map { offsets =>
+        val Vector(start, nextStart) = offsets
+        val finish = nextStart - 8
+        println(s"read polyline from $start to $finish")
+        println("this slice of bits:") // slice Must be div 128
+        // 0 - 32, 32 - 940, 940 - ???
+        val slice = bits.slice(start, finish)
+        println(slice)
+        println(s"expected num points: ${slice.size / 128}")
+        println(s"even divis?: ${slice.size % 128}")
+        val expN = (finish - start) / 128
+        println("read expN")
+        println(expN)
+        val res = vectorOfN(provide(expN), pointCodec).decode(slice)
+        println(res)
+        vector(pointCodec).decode(slice)
+      }.toVector
+
+      partResults.foldLeft(Attempt.successful(DecodeResult(Vector(Vector.empty[P]), bits))) { (l: Attempt[DecodeResult[Vector[Vector[P]]]], r: Attempt[DecodeResult[Vector[P]]]) =>
+        for {
+          l <- l
+          r <- r
+        } yield {
+          DecodeResult(l.value :+ r.value, r.remainder)
+        }
+      }
+    }
+
+    def encode(parts: Vector[Vector[P]]): Attempt[BitVector] = {
+      ???
+    }
+
+    def sizeBound: SizeBound = SizeBound(0, Some(offsets.last * 8))
+  }
+
+  case class PolyLineParts(bbox: BBox, numParts: Int, numPoints: Int, partOffsets: Vector[Int])
+  case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
+  val polyLineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
+  val polyLineParts = polyLineHeader.flatZip {
+    case h => {
+      vectorOfN(provide(h.numParts), int32L)
+    }
+  }.xmap(
+    { case ((header,  partOffsets)) => {
+      PolyLineParts(header.bbox, header.numParts, header.numPoints, partOffsets) },
+    },
+    { p: PolyLineParts =>
+      (PolyLineHeader(p.bbox, p.numParts, p.numPoints), p.partOffsets)
+    }
+ )
+
+  val polyLine = polyLineParts.flatZip { parts =>
+    println(s"decode polyline points - numPoints: ${parts}")
+    // 1530 vs 762 ???
+    vectorOfN(provide(parts.numPoints), point)
+  }.as[(PolyLineParts, Vector[Point])]
   // val multiPointZ =
   //   (bbox :: vectorOfN(int32L, point) :: zRange :: vector(double) :: mRange :: vector(double))
   //     .as[MultiPointZ]
@@ -92,6 +175,7 @@ object Core {
   object ShapeType {
     val nullShape = 0
     val point = 1
+    val polyLine = 3
     val multiPoint = 8
     val multiPointZ = 18
   }
@@ -178,7 +262,7 @@ object Core {
   // 10 x 16 = 160 bits; (4 + 8 + 8) x 8 = 160
   // 4               4                               4               8           8
   // 1 (Point Type), 10 (Point size - 16 bit words), 1 (Point Type), X (Double), Y (Double)
-  def readHeader(bytes: Array[Byte]): Option[ShapefileHeader] = {
+  def readHeader(bytes: Array[Byte]): Try[ShapefileHeader] = {
     println(s"total size: ${bytes.size}")
     val r = for {
       h <- header.decode(BitVector(bytes))
@@ -203,6 +287,16 @@ object Core {
     }
     println("result:")
     println(r)
-    None
+
+    header.decode(BitVector(bytes)).toTry.map(_.value)
   }
 }
+
+
+// Types
+// * [ ] Point
+// * [ ] MultiPoint
+// * [ ] PolyLine
+// * [ ] MultiPointZ
+// * [ ] MultiPointM
+// * [ ] MultiPointM
