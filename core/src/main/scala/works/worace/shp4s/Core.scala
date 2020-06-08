@@ -63,10 +63,6 @@ object Core {
     points: Vector[Point],
     z: RangedValues,
     m: Option[RangedValues]
-    // m: Option
-    // zValues: Vector[Double]
-    // mRange: MRange,
-    // mValues: Vector[Double]
   ) extends Shape
   case class PolyLine(bbox: BBox, parts: Vector[Vector[Point]]) extends Shape
 
@@ -92,50 +88,39 @@ object Core {
       v match {
         case points :: _ => {
           (points.size, v)
-        //   (points.size, points :: zRange :: HNil)
-        //   // mrange
         }
       }
     }
   )
   val multiPointZ = (bbox :: multiPointZBody).as[MultiPointZ]
 
-  case class PolyLineParts(bbox: BBox, numParts: Int, numPoints: Int, partOffsets: Vector[Int])
   case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
   val polylineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
-  val polylineParts = polylineHeader.flatZip {
-    case h => {
-      vectorOfN(provide(h.numParts), int32L)
-    }
-  }.xmap(
-    { case ((header,  partOffsets)) => {
-      PolyLineParts(header.bbox, header.numParts, header.numPoints, partOffsets) },
-    },
-    { p: PolyLineParts =>
-      (PolyLineHeader(p.bbox, p.numParts, p.numPoints), p.partOffsets)
-    }
- )
 
   private def polylineSlices(points: Vector[Point], offsets: Vector[Int]): Vector[Vector[Point]] = {
     if (offsets.size > 1) {
-    offsets
-      .sliding(2)
-      .map { case Vector(start, finish) => points.slice(start, finish) }
-      .toVector
+      offsets
+        .sliding(2)
+        .map { case Vector(start, finish) => points.slice(start, finish) }
+        .toVector
     } else {
       Vector(points)
     }
   }
 
-  val polyline = polylineParts.flatZip { parts =>
-    vectorOfN(provide(parts.numPoints), point)
+  val polyline: Codec[PolyLine] = polylineHeader.flatPrepend { h =>
+    vectorOfN(provide(h.numParts), int32L).hlist
+  }.flatPrepend { case h :: _ =>
+    vectorOfN(provide(h.numPoints), point).hlist
   }.xmap(
-    { case ((header, parts)) => PolyLine(header.bbox, polylineSlices(parts, header.partOffsets)) },
+    { case ((header :: offsets :: HNil) :: points :: HNil) =>
+      PolyLine(header.bbox, polylineSlices(points, offsets)) },
     (pl: PolyLine) => {
       val points = pl.parts.flatten
       val numPoints = points.size
       val offsets = pl.parts.map(_.size - 1).prepended(0)
-      (PolyLineParts(pl.bbox, pl.parts.size, numPoints, offsets), points)
+      val header = PolyLineHeader(pl.bbox, pl.parts.size, numPoints)
+      (header :: offsets :: HNil) :: points :: HNil
     }
   )
 
