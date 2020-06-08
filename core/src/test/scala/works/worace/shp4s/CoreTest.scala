@@ -31,7 +31,7 @@ object TestFiles {
   val polyline = Resource("usa-major-highways.shp")
   val polygon = Resource("ne_10m_admin_0_antarctic_claims.shp")
   val multiPoint = Resource("multipoint.shp")
-  val pointz = Resource("pointz.shp")
+  val pointZ = Resource("pointz.shp")
 }
 
 class CoreTest extends munit.FunSuite {
@@ -49,7 +49,7 @@ class CoreTest extends munit.FunSuite {
       header <- Core.header.decode(file.bitvec)
       recordHeader <- Core.recordHeader.decode(header.remainder)
       discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
-      shape <- decoder.decode(discriminator.remainder)
+      shape <- scodec.codecs.fixedSizeBits(recordHeader.value.bitLength, decoder).decode(discriminator.remainder)
     } yield {
       test(shape.value)
     }
@@ -147,7 +147,24 @@ class CoreTest extends munit.FunSuite {
         Vector(Point(5.2, -7.0), Point(-83.0, 24.0293), Point(145.0, -20.23))
       )
     )
-
     assertEquals(mps.map(_.shape), exp)
+  }
+
+  test("PointZ") {
+    shapeTest(TestFiles.pointZ, ShapeType.pointZ, ShpCodecs.pointZ) { shp =>
+      assertEquals(shp, PointZ(1.0, 2.0, -3.0, None))
+    }
+  }
+
+  test("PointZ File") {
+    val pzs = Core.readAllSync(TestFiles.pointZ.path)
+    assertEquals(pzs.size, 2)
+    assertEquals(
+      pzs.map(_.shape),
+      Vector(
+        PointZ(1.0, 2.0, -3.0, None),
+        PointZ(180.0, -22.0, 34.0, None)
+      )
+    )
   }
 }

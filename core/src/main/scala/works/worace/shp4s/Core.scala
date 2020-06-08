@@ -56,7 +56,7 @@ object Core {
   sealed trait Shape
   case object NullShape extends Shape
   case class Point(x: Double, y: Double) extends Shape
-  case class PointZ(x: Double, y: Double, z: Double) extends Shape
+  case class PointZ(x: Double, y: Double, z: Double, m: Option[Double]) extends Shape
   case class MultiPoint(bbox: BBox, points: Vector[Point]) extends Shape
   case class MultiPointZ(
     bbox: BBox,
@@ -67,6 +67,13 @@ object Core {
   case class PolyLine(bbox: BBox, lines: Vector[Vector[Point]]) extends Shape
   case class Polygon(bbox: BBox, rings: Vector[Vector[Point]]) extends Shape
 
+  val MIN_SHP_DOUBLE: Double = -1.0E38
+  object PointZ {
+    def apply(x: Double, y: Double, z: Double, m: Double): PointZ = {
+      PointZ(x, y, z, Some(m).filter(_ > MIN_SHP_DOUBLE))
+    }
+  }
+
   case class RecordHeader(recordNumber: Int, wordsLength: Int) {
     def byteLength: Int = wordsLength * 2
     def bitLength: Int = byteLength * 8
@@ -75,12 +82,16 @@ object Core {
   val bbox = (doubleL :: doubleL :: doubleL :: doubleL).as[BBox]
   def rangedValues(num: Int) = (doubleL :: doubleL :: vectorOfN(provide(num), doubleL)).as[RangedValues]
 
+  def ifAvailable[A](codec: Codec[A], zero: A): Codec[Option[A]] = {
+    optional(lookahead(codec.unit(zero)), codec)
+  }
+
   val multiPointZBody = int32L.flatZip { numPoints =>
     vectorOfN(provide(numPoints), ShpCodecs.point) ::
     rangedValues(numPoints) ::
     // TODO: Not sure using RangedValues.zero is right here -- should be None
     // but it may never get called anyway because it's a unit codec?
-    optional(lookahead(rangedValues(numPoints).unit(RangedValues.zero)), rangedValues(numPoints))
+    ifAvailable(rangedValues(numPoints), RangedValues.zero)
   }.xmap(
     { case ((_numPoints, contents)) => contents },
     { v: (Vector[Point] :: RangedValues :: Option[RangedValues] :: HNil) =>
@@ -137,6 +148,12 @@ object Core {
       pl => Polygon(pl.bbox, pl.lines),
       poly => PolyLine(poly.bbox, poly.rings)
     )
+
+    val pointZ = (doubleL :: doubleL :: doubleL :: ifAvailable(doubleL, Double.MinValue)).xmap(
+      { case (x :: y :: z :: m :: HNil) => PointZ(x, y, z, m)  },
+      (pz: PointZ) => pz.x :: pz.y :: pz.z :: pz.m :: HNil
+    )
+
     val shape = recordHeader
       .flatPrepend { header =>
         fixedSizeBytes(
@@ -167,6 +184,10 @@ object Core {
               case p: Polygon => Some(p)
               case _                => None
             }(polygon)
+            .subcaseO(ShapeType.pointZ) {
+              case p: PointZ => Some(p)
+              case o                => None
+            }(pointZ)
         ).hlist
       }
       .as[ShapeRecord]
@@ -178,6 +199,7 @@ object Core {
     val polyline = 3
     val polygon = 5
     val multiPoint = 8
+    val pointZ = 11
     val multiPointZ = 18
   }
 
@@ -231,3 +253,6 @@ object Core {
 // * [ ] PolygonM
 // * [ ] MultiPointM
 // * [ ] MultiPatch
+
+// TODO Edge Cases
+// * [ ] Verify PointZ file with M values
