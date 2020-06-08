@@ -14,6 +14,7 @@ import scodec.Codec
 import works.worace.shp4s.Core.Point
 import works.worace.shp4s.Core.PointZ
 import works.worace.shp4s.Core.MultiPoint
+import Core.ShpCodecs
 
 case class Resource(url: URL) {
   def bytes: Array[Byte] = Files.readAllBytes(Paths.get(url.getPath))
@@ -30,6 +31,7 @@ object TestFiles {
   val polyline = Resource("usa-major-highways.shp")
   val polygon = Resource("ne_10m_admin_0_antarctic_claims.shp")
   val multiPoint = Resource("multipoint.shp")
+  val pointz = Resource("pointz.shp")
 }
 
 class CoreTest extends munit.FunSuite {
@@ -79,7 +81,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("MultiPointZ") {
-    shapeTest(TestFiles.multiPointZ, ShapeType.multiPointZ, Core.multiPointZ) { mpz =>
+    shapeTest(TestFiles.multiPointZ, ShapeType.multiPointZ, ShpCodecs.multiPointZ) { mpz =>
       val bb = BBox(431478.25, 141891.97, 431478.25, 141891.97)
       assertEquals(mpz.bbox, bb)
       assertEquals(mpz.points.head, Point(431478.25, 141891.97))
@@ -94,7 +96,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("Polyline") {
-    shapeTest(TestFiles.polyline, ShapeType.polyline, Core.polyline) { pl =>
+    shapeTest(TestFiles.polyline, ShapeType.polyline, ShpCodecs.polyline) { pl =>
       val bb = BBox(-118.48595907794942, 29.394034927600217, -81.68213083231271, 34.08730621013162)
       assertEquals(pl.bbox, bb)
       assertEquals(pl.lines.head.head, Point(-118.48595907794942, 34.01473938049082))
@@ -109,7 +111,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("Polygon") {
-    shapeTest(TestFiles.polygon, ShapeType.polygon, Core.polygon) { shp =>
+    shapeTest(TestFiles.polygon, ShapeType.polygon, ShpCodecs.polygon) { shp =>
       val bbox = shp.bbox
       assertEquals(bbox, BBox(-20.0, -90.0, -10.0, -60.0))
       assertEquals(shp.rings.head.head, Point(-20.0, -60.0))
@@ -124,7 +126,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("MultiPoint") {
-    shapeTest(TestFiles.multiPoint, ShapeType.multiPoint, Core.multiPoint) { shp =>
+    shapeTest(TestFiles.multiPoint, ShapeType.multiPoint, ShpCodecs.multiPoint) { shp =>
       val bbox = shp.bbox
       assertEquals(bbox, BBox(-123.0, -20.0, 10.0, 47.5234523))
       assertEquals(shp.points, Vector(Point(10.0, -20.0), Point(-123.0, 47.5234523)))

@@ -74,15 +74,9 @@ object Core {
   val recordHeader = (int32 :: int32).as[RecordHeader]
   val bbox = (doubleL :: doubleL :: doubleL :: doubleL).as[BBox]
   def rangedValues(num: Int) = (doubleL :: doubleL :: vectorOfN(provide(num), doubleL)).as[RangedValues]
-  val point = (doubleL :: doubleL).as[Point]
-  val nullShape = provide(NullShape)
-
-  val multiPoint = (bbox :: int32L.consume(
-    numPoints => vectorOfN(provide(numPoints), point)
-  )(points => points.size)).as[MultiPoint]
 
   val multiPointZBody = int32L.flatZip { numPoints =>
-    vectorOfN(provide(numPoints), point) ::
+    vectorOfN(provide(numPoints), ShpCodecs.point) ::
     rangedValues(numPoints) ::
     // TODO: Not sure using RangedValues.zero is right here -- should be None
     // but it may never get called anyway because it's a unit codec?
@@ -97,7 +91,8 @@ object Core {
       }
     }
   )
-  val multiPointZ = (bbox :: multiPointZBody).as[MultiPointZ]
+
+
 
   private case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
   private val polylineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
@@ -113,26 +108,69 @@ object Core {
     }
   }
 
-  val polyline: Codec[PolyLine] = polylineHeader.flatPrepend { h =>
-    vectorOfN(provide(h.numParts), int32L).hlist
-  }.flatPrepend { case h :: _ =>
-    vectorOfN(provide(h.numPoints), point).hlist
-  }.xmap(
-    { case ((header :: offsets :: HNil) :: points :: HNil) =>
-      PolyLine(header.bbox, polylineSlices(points, offsets)) },
-    (pl: PolyLine) => {
-      val points = pl.lines.flatten
-      val numPoints = points.size
-      val offsets = pl.lines.map(_.size - 1).prepended(0)
-      val header = PolyLineHeader(pl.bbox, pl.lines.size, numPoints)
-      (header :: offsets :: HNil) :: points :: HNil
-    }
-  )
 
-  val polygon: Codec[Polygon] = polyline.xmap(
-    pl => Polygon(pl.bbox, pl.lines),
-    poly => PolyLine(poly.bbox, poly.rings)
-  )
+  case class ShapeRecord(header: RecordHeader, shape: Shape)
+
+  object ShpCodecs {
+    val point = (doubleL :: doubleL).as[Point]
+    val nullShape = provide(NullShape)
+    val multiPoint = (bbox :: int32L.consume(
+      numPoints => vectorOfN(provide(numPoints), point)
+    )(points => points.size)).as[MultiPoint]
+    val multiPointZ = (bbox :: multiPointZBody).as[MultiPointZ]
+    val polyline: Codec[PolyLine] = polylineHeader.flatPrepend { h =>
+      vectorOfN(provide(h.numParts), int32L).hlist
+    }.flatPrepend { case h :: _ =>
+        vectorOfN(provide(h.numPoints), point).hlist
+    }.xmap(
+      { case ((header :: offsets :: HNil) :: points :: HNil) =>
+        PolyLine(header.bbox, polylineSlices(points, offsets)) },
+      (pl: PolyLine) => {
+        val points = pl.lines.flatten
+        val numPoints = points.size
+        val offsets = pl.lines.map(_.size - 1).prepended(0)
+        val header = PolyLineHeader(pl.bbox, pl.lines.size, numPoints)
+        (header :: offsets :: HNil) :: points :: HNil
+      }
+    )
+    val polygon: Codec[Polygon] = polyline.xmap(
+      pl => Polygon(pl.bbox, pl.lines),
+      poly => PolyLine(poly.bbox, poly.rings)
+    )
+    val shape = recordHeader
+      .flatPrepend { header =>
+        fixedSizeBytes(
+          header.byteLength,
+          discriminated[Shape]
+            .by(int32L)
+            .subcaseO(ShapeType.nullShape) {
+              case n: NullShape.type => Some(NullShape)
+              case _                 => None
+            }(nullShape)
+            .subcaseO(ShapeType.point) {
+              case p: Point => Some(p)
+              case _        => None
+            }(point)
+            .subcaseO(ShapeType.multiPoint) {
+              case mp: MultiPoint => Some(mp)
+              case _              => None
+            }(multiPoint)
+            .subcaseO(ShapeType.multiPointZ) {
+              case mpz: MultiPointZ => Some(mpz)
+              case _                => None
+            }(multiPointZ)
+            .subcaseO(ShapeType.polyline) {
+              case pl: PolyLine => Some(pl)
+              case _                => None
+            }(polyline)
+            .subcaseO(ShapeType.polygon) {
+              case p: Polygon => Some(p)
+              case _                => None
+            }(polygon)
+        ).hlist
+      }
+      .as[ShapeRecord]
+  }
 
   object ShapeType {
     val nullShape = 0
@@ -143,43 +181,8 @@ object Core {
     val multiPointZ = 18
   }
 
-  case class ShapeRecord(header: RecordHeader, shape: Shape)
-  val shape = recordHeader
-    .flatPrepend { header =>
-      fixedSizeBytes(
-        header.byteLength,
-        discriminated[Shape]
-          .by(int32L)
-          .subcaseO(ShapeType.nullShape) {
-            case n: NullShape.type => Some(NullShape)
-            case _                 => None
-          }(nullShape)
-          .subcaseO(ShapeType.point) {
-            case p: Point => Some(p)
-            case _        => None
-          }(point)
-          .subcaseO(ShapeType.multiPoint) {
-            case mp: MultiPoint => Some(mp)
-            case _              => None
-          }(multiPoint)
-          .subcaseO(ShapeType.multiPointZ) {
-            case mpz: MultiPointZ => Some(mpz)
-            case _                => None
-          }(multiPointZ)
-          .subcaseO(ShapeType.polyline) {
-            case pl: PolyLine => Some(pl)
-            case _                => None
-          }(polyline)
-          .subcaseO(ShapeType.polygon) {
-            case p: Polygon => Some(p)
-            case _                => None
-          }(polygon)
-      ).hlist
-    }
-    .as[ShapeRecord]
-
   val shpStream: StreamDecoder[ShapeRecord] = StreamDecoder
-    .many(shape)
+    .many(ShpCodecs.shape)
 
   val HEADER_SIZE = 100
   def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, ShapeRecord] = {
@@ -217,8 +220,8 @@ object Core {
 // * [X] NullShape
 // * [X] Point
 // * [X] PolyLine
-// * [x] Polygon
-// * [ ] MultiPoint
+// * [X] Polygon
+// * [X] MultiPoint
 // * [ ] PointZ
 // * [ ] PolylineZ
 // * [ ] PolygonZ
