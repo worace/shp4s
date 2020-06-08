@@ -12,6 +12,7 @@ import works.worace.shp4s.Core.BBox
 import works.worace.shp4s.Core.Shape
 import scodec.Codec
 import works.worace.shp4s.Core.Point
+import works.worace.shp4s.Core.PointZ
 
 case class Resource(url: URL) {
   def bytes: Array[Byte] = Files.readAllBytes(Paths.get(url.getPath))
@@ -27,6 +28,7 @@ object TestFiles {
   val multiPointZ = Resource("multipointZ.shp")
   val polyline = Resource("usa-major-highways.shp")
   val polygon = Resource("ne_10m_admin_0_antarctic_claims.shp")
+  val multiPoint = Resource("multipoint.shp")
 }
 
 class CoreTest extends munit.FunSuite {
@@ -35,6 +37,18 @@ class CoreTest extends munit.FunSuite {
 
   def assertInDelta(a: Double, b: Double, delta: Double): Unit = {
     assert((a - b).abs < delta, s"Expected $a within $delta of $b")
+  }
+
+  def shapeTest[S <: Shape](file: Resource, discrim: Int, decoder: Codec[S])(test: S => Unit): Unit = {
+    val t = for {
+      header <- Core.header.decode(file.bitvec)
+      recordHeader <- Core.recordHeader.decode(header.remainder)
+      discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
+      shape <- decoder.decode(discriminator.remainder)
+    } yield {
+      test(shape.value)
+    }
+    t.toOption.getOrElse(fail(s"Expected succesful decoder. Got $t"))
   }
 
   test("reading a header") {
@@ -62,19 +76,11 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("MultiPointZ") {
-    val t = for {
-      header <- Core.header.decode(TestFiles.multiPointZ.bitvec)
-      recordHeader <- Core.recordHeader.decode(header.remainder)
-      discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
-      mpz <- Core.polyline.decode(discriminator.remainder)
-    } yield {
-      assertEquals(header.value.shapeType, ShapeType.multiPointZ)
-      assertEquals(recordHeader.value.wordsLength, 40)
-      assertEquals(discriminator.value, ShapeType.multiPointZ)
-      val bbox = mpz.value.bbox
-      assertEquals(bbox, BBox(431478.25,141891.97,431478.25,141891.97))
+    shapeTest(TestFiles.multiPointZ, ShapeType.multiPointZ, Core.multiPointZ) { mpz =>
+      val bb = BBox(431478.25, 141891.97, 431478.25, 141891.97)
+      assertEquals(mpz.bbox, bb)
+      assertEquals(mpz.points.head, Point(431478.25, 141891.97))
     }
-    t.toOption.get
   }
 
   test("MultiPointZ File") {
@@ -84,26 +90,12 @@ class CoreTest extends munit.FunSuite {
     assertEquals(types, Set("works.worace.shp4s.Core$MultiPointZ"))
   }
 
-  def shapeTest[S <: Shape](discrim: Int, decoder: Codec[S], t: S => Unit): Unit = {
-  }
-
   test("Polyline") {
-    val t = for {
-      header <- Core.header.decode(TestFiles.polyline.bitvec)
-      recordHeader <- Core.recordHeader.decode(header.remainder)
-      discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
-      polyline <- Core.polyline.decode(discriminator.remainder)
-    } yield {
-      assertEquals(header.value.shapeType, ShapeType.polyline)
-      assertEquals(recordHeader.value.wordsLength, 12268)
-      assertEquals(discriminator.value, ShapeType.polyline)
-      val bbox = polyline.value.bbox
-      assertInDelta(bbox.xMin, -118.486, 0.01)
-      assertInDelta(bbox.yMin, 29.39, 0.01)
-      assertInDelta(bbox.xMax, -81.68, 0.01)
-      assertInDelta(bbox.yMax, 34.0873, 0.01)
+    shapeTest(TestFiles.polyline, ShapeType.polyline, Core.polyline) { pl =>
+      val bb = BBox(-118.48595907794942,29.394034927600217,-81.68213083231271,34.08730621013162)
+      assertEquals(pl.bbox, bb)
+      assertEquals(pl.lines.head.head, Point(-118.48595907794942, 34.01473938049082))
     }
-    t.toOption.get
   }
 
   test("polyline file") {
@@ -114,20 +106,11 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("Polygon") {
-    val t = for {
-      header <- Core.header.decode(TestFiles.polygon.bitvec)
-      recordHeader <- Core.recordHeader.decode(header.remainder)
-      discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
-      shp <- Core.polygon.decode(discriminator.remainder)
-    } yield {
-      assertEquals(header.value.shapeType, ShapeType.polygon)
-      assertEquals(recordHeader.value.wordsLength, 6432)
-      assertEquals(discriminator.value, ShapeType.polygon)
-      val bbox = shp.value.bbox
+    shapeTest(TestFiles.polygon, ShapeType.polygon, Core.polygon) { shp =>
+      val bbox = shp.bbox
       assertEquals(bbox, BBox(-20.0,-90.0,-10.0,-60.0))
-      assertEquals(shp.value.rings.head.head, Point(-20.0, -60.0))
+      assertEquals(shp.rings.head.head, Point(-20.0, -60.0))
     }
-    t.toOption.get
   }
 
   test("Polygon file") {
@@ -135,5 +118,13 @@ class CoreTest extends munit.FunSuite {
     assertEquals(pls.size, 10)
     val types = pls.map(_.shape.getClass.getName).toSet
     assertEquals(types, Set("works.worace.shp4s.Core$Polygon"))
+  }
+
+  test("MultiPoint") {
+    shapeTest(TestFiles.multiPoint, ShapeType.multiPoint, Core.multiPoint) { shp =>
+      val bbox = shp.bbox
+      assertEquals(bbox, BBox(-123.0, -20.0, 10.0, 47.5234523))
+      assertEquals(shp.points, Vector(Point(10.0, -20.0), Point(-123.0, 47.5234523)))
+    }
   }
 }
