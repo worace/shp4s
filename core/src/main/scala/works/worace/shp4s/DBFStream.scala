@@ -4,33 +4,47 @@ import java.io.FileInputStream
 import com.linuxense.javadbf.{DBFReader, DBFField}
 import java.nio.file.Path
 import scala.util.Try
+import java.util.Date
+import scala.math.BigDecimal
+import com.linuxense.javadbf.DBFRow
+import com.linuxense.javadbf.DBFDataType
 
-class DBFIterator(path: Path) extends Iterator[Map[String, String]] {
-  val reader: DBFReader = new DBFReader(new FileInputStream(path.toString))
-  val fieldCount = reader.getFieldCount
-  val fields: Vector[DBFField] = (0 until fieldCount).map(reader.getField(_)).toVector
-  val fieldNames: Vector[String] = fields.map(_.getName)
+sealed trait DBFValue
+case class DBFString(value: String) extends DBFValue
+case class DBFLong(value: Long) extends DBFValue
+case class DBFDate(value: Date) extends DBFValue
+case class DBFFloat(value: BigDecimal) extends DBFValue
+case class DBFNumeric(value: BigDecimal) extends DBFValue
+case class DBFLogical(value: Boolean) extends DBFValue
+
+class DBFIterator(path: Path) extends Iterator[Map[String, DBFValue]] {
+  private val reader: DBFReader = new DBFReader(new FileInputStream(path.toString))
+  private val fieldCount = reader.getFieldCount
+  private val fields: Vector[DBFField] = (0 until fieldCount).map(reader.getField(_)).toVector
+  private val fieldNames: Vector[String] = fields.map(_.getName)
   private val rowCount = reader.getRecordCount()
   private var fetchedCount = 0
 
-  // for (int i = 0; i < numberOfFields; i++) {
+  private def readDBFField(row: DBFRow, field: DBFField): DBFValue = {
+    field.getType match {
+      case DBFDataType.CHARACTER => DBFString(row.getString(field.getName))
+      case DBFDataType.LONG => DBFLong(row.getLong(field.getName))
+      case DBFDataType.DATE => DBFDate(row.getDate(field.getName))
+      case DBFDataType.FLOATING_POINT => DBFFloat(row.getBigDecimal(field.getName))
+      case DBFDataType.NUMERIC => DBFNumeric(row.getBigDecimal(field.getName))
+      case DBFDataType.LOGICAL => DBFLogical(row.getBoolean(field.getName))
+      case DBFDataType.VARCHAR => DBFString(row.getString(field.getName))
+      case _ => DBFString("")
+    }
+  }
 
-  // 	DBFField field = reader.getField(i);
-
-  // 	// do something with it if you want
-  // 	// refer the JavaDoc API reference for more details
-  // 	//
-  // 	System.out.println(field.getName());
-  // }
-
-  def next(): Map[String, String] = {
+  def next(): Map[String, DBFValue] = {
     val row = reader.nextRow()
-    val intex = row.getInt("LABEL_FLAG")
-    println(s"int field:  ${intex}")
-    val r = fieldNames.map(n => n -> Try(row.getString(n)).getOrElse("")).toMap
+    val r = fields.map(field => field.getName -> readDBFField(row, field)).toMap
     fetchedCount += 1
     r
   }
 
   def hasNext: Boolean = fetchedCount < rowCount
+  def close(): Unit = reader.close()
 }
