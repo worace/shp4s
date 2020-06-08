@@ -57,7 +57,7 @@ object Core {
   case object NullShape extends Shape
   case class Point(x: Double, y: Double) extends Shape
   case class PointZ(x: Double, y: Double, z: Double) extends Shape
-  case class MultiPoint(bbox: BBox, numPoints: Int, points: Vector[Point]) extends Shape
+  case class MultiPoint(bbox: BBox, points: Vector[Point]) extends Shape
   case class MultiPointZ(
     bbox: BBox,
     points: Vector[Point],
@@ -76,7 +76,11 @@ object Core {
   def rangedValues(num: Int) = (doubleL :: doubleL :: vectorOfN(provide(num), doubleL)).as[RangedValues]
   val point = (doubleL :: doubleL).as[Point]
   val nullShape = provide(NullShape)
-  val multiPoint = (bbox :: int32L :: vector(point)).as[MultiPoint]
+
+  val multiPoint = (bbox :: int32L.consume(
+    numPoints => vectorOfN(provide(numPoints), point)
+  )(points => points.size)).as[MultiPoint]
+
   val multiPointZBody = int32L.flatZip { numPoints =>
     vectorOfN(provide(numPoints), point) ::
     rangedValues(numPoints) ::
