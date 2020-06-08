@@ -100,53 +100,6 @@ object Core {
   )
   val multiPointZ = (bbox :: multiPointZBody).as[MultiPointZ]
 
-  def polylinePartsDecoder[P](offsets: Vector[Int], pointCodec: Codec[P]): Codec[Vector[Vector[P]]] = new Codec[Vector[Vector[P]]] {
-    def decode(bits: BitVector): Attempt[DecodeResult[Vector[Vector[P]]]] = {
-      println("POINT at 0")
-      println("all bits:")
-      println(bits)
-      val pointr = pointCodec.decode(bits)
-      // println(pointr)
-      // println(s"point used bits = ${pointr.map(r => bits.size - r.remainder.size)}")
-      val bitOffsets = offsets.drop(1).map(_ - 1).map(_ * 8).prepended(0)
-      println(bitOffsets)
-
-
-      val partResults: Vector[Attempt[DecodeResult[Vector[P]]]] = bitOffsets.sliding(2).map { offsets =>
-        val Vector(start, nextStart) = offsets
-        val finish = nextStart - 8
-        println(s"read polyline from $start to $finish")
-        println("this slice of bits:") // slice Must be div 128
-        // 0 - 32, 32 - 940, 940 - ???
-        val slice = bits.slice(start, finish)
-        println(slice)
-        println(s"expected num points: ${slice.size / 128}")
-        println(s"even divis?: ${slice.size % 128}")
-        val expN = (finish - start) / 128
-        println("read expN")
-        println(expN)
-        val res = vectorOfN(provide(expN), pointCodec).decode(slice)
-        println(res)
-        vector(pointCodec).decode(slice)
-      }.toVector
-
-      partResults.foldLeft(Attempt.successful(DecodeResult(Vector(Vector.empty[P]), bits))) { (l: Attempt[DecodeResult[Vector[Vector[P]]]], r: Attempt[DecodeResult[Vector[P]]]) =>
-        for {
-          l <- l
-          r <- r
-        } yield {
-          DecodeResult(l.value :+ r.value, r.remainder)
-        }
-      }
-    }
-
-    def encode(parts: Vector[Vector[P]]): Attempt[BitVector] = {
-      ???
-    }
-
-    def sizeBound: SizeBound = SizeBound(0, Some(offsets.last * 8))
-  }
-
   case class PolyLineParts(bbox: BBox, numParts: Int, numPoints: Int, partOffsets: Vector[Int])
   case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
   val polylineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
@@ -185,9 +138,6 @@ object Core {
       (PolyLineParts(pl.bbox, pl.parts.size, numPoints, offsets), points)
     }
   )
-  // val multiPointZ =
-  //   (bbox :: vectorOfN(int32L, point) :: zRange :: vector(double) :: mRange :: vector(double))
-  //     .as[MultiPointZ]
 
   object ShapeType {
     val nullShape = 0
@@ -225,7 +175,6 @@ object Core {
             case _                => None
           }(polyline)
       ).hlist
-      // subcaseO(2) { case (nme, fld: StringField) => Some(nme -> fld); case _ => None } (cstring ~ cstring.as[StringField])
     }
     .as[ShapeRecord]
 
