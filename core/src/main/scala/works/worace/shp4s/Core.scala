@@ -256,3 +256,5 @@ object Core {
 
 // TODO Edge Cases
 // * [ ] Verify PointZ file with M values
+// * [ ] Verify MultiPointZ with M values
+// * [ ] Convert MultiPointZ to hold Vector[PointZ] values

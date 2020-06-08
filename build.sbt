@@ -53,7 +53,8 @@ lazy val core = project
     libraryDependencies ++= Seq(
       "org.scodec" %% "scodec-core" % "1.11.7",
       "org.scodec" %% "scodec-stream" % "2.0.0",
-      "co.fs2" %% "fs2-io" % "2.3.0"
+      "co.fs2" %% "fs2-io" % "2.3.0",
+      "com.github.albfernandez" % "javadbf" % "1.11.1"
     )
   )
 
