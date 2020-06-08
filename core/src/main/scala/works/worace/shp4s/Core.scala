@@ -64,7 +64,8 @@ object Core {
     z: RangedValues,
     m: Option[RangedValues]
   ) extends Shape
-  case class PolyLine(bbox: BBox, parts: Vector[Vector[Point]]) extends Shape
+  case class PolyLine(bbox: BBox, lines: Vector[Vector[Point]]) extends Shape
+  case class Polygon(bbox: BBox, rings: Vector[Vector[Point]]) extends Shape
 
   case class RecordHeader(recordNumber: Int, wordsLength: Int) {
     def byteLength: Int = wordsLength * 2
@@ -94,8 +95,8 @@ object Core {
   )
   val multiPointZ = (bbox :: multiPointZBody).as[MultiPointZ]
 
-  case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
-  val polylineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
+  private case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
+  private val polylineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
 
   private def polylineSlices(points: Vector[Point], offsets: Vector[Int]): Vector[Vector[Point]] = {
     if (offsets.size > 1) {
@@ -116,18 +117,24 @@ object Core {
     { case ((header :: offsets :: HNil) :: points :: HNil) =>
       PolyLine(header.bbox, polylineSlices(points, offsets)) },
     (pl: PolyLine) => {
-      val points = pl.parts.flatten
+      val points = pl.lines.flatten
       val numPoints = points.size
-      val offsets = pl.parts.map(_.size - 1).prepended(0)
-      val header = PolyLineHeader(pl.bbox, pl.parts.size, numPoints)
+      val offsets = pl.lines.map(_.size - 1).prepended(0)
+      val header = PolyLineHeader(pl.bbox, pl.lines.size, numPoints)
       (header :: offsets :: HNil) :: points :: HNil
     }
+  )
+
+  val polygon: Codec[Polygon] = polyline.xmap(
+    pl => Polygon(pl.bbox, pl.lines),
+    poly => PolyLine(poly.bbox, poly.rings)
   )
 
   object ShapeType {
     val nullShape = 0
     val point = 1
     val polyline = 3
+    val polygon = 5
     val multiPoint = 8
     val multiPointZ = 18
   }
@@ -159,6 +166,10 @@ object Core {
             case pl: PolyLine => Some(pl)
             case _                => None
           }(polyline)
+          .subcaseO(ShapeType.polygon) {
+            case p: Polygon => Some(p)
+            case _                => None
+          }(polygon)
       ).hlist
     }
     .as[ShapeRecord]
@@ -217,12 +228,24 @@ object Core {
     header.decode(BitVector(bytes)).toTry.map(_.value)
   }
 }
+// Polygon -- same as polyline
+// bbox
+// numparts (int) == num rings
+// numpoints (int)
 
 
-// Types
+// Types - 14
+// * [X] NullShape
 // * [X] Point
-// * [ ] MultiPoint
 // * [X] PolyLine
+// * [x] Polygon
+// * [ ] MultiPoint
+// * [ ] PointZ
+// * [ ] PolylineZ
+// * [ ] PolygonZ
 // * [X] MultiPointZ
+// * [ ] PointM
+// * [ ] PolyLineM
+// * [ ] PolygonM
 // * [ ] MultiPointM
-// * [ ] MultiPointM
+// * [ ] MultiPatch

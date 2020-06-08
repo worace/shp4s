@@ -9,6 +9,9 @@ import scodec.bits.BitVector
 import works.worace.shp4s.Core.MultiPointZ
 import works.worace.shp4s.Core.ShapeType
 import works.worace.shp4s.Core.BBox
+import works.worace.shp4s.Core.Shape
+import scodec.Codec
+import works.worace.shp4s.Core.Point
 
 case class Resource(url: URL) {
   def bytes: Array[Byte] = Files.readAllBytes(Paths.get(url.getPath))
@@ -23,6 +26,7 @@ object TestFiles {
   val points = Resource("world-cities.shp")
   val multiPointZ = Resource("multipointZ.shp")
   val polyline = Resource("usa-major-highways.shp")
+  val polygon = Resource("ne_10m_admin_0_antarctic_claims.shp")
 }
 
 class CoreTest extends munit.FunSuite {
@@ -80,6 +84,9 @@ class CoreTest extends munit.FunSuite {
     assertEquals(types, Set("works.worace.shp4s.Core$MultiPointZ"))
   }
 
+  def shapeTest[S <: Shape](discrim: Int, decoder: Codec[S], t: S => Unit): Unit = {
+  }
+
   test("Polyline") {
     val t = for {
       header <- Core.header.decode(TestFiles.polyline.bitvec)
@@ -104,5 +111,29 @@ class CoreTest extends munit.FunSuite {
     assertEquals(pls.size, 233)
     val types = pls.map(_.shape.getClass.getName).toSet
     assertEquals(types, Set("works.worace.shp4s.Core$PolyLine"))
+  }
+
+  test("Polygon") {
+    val t = for {
+      header <- Core.header.decode(TestFiles.polygon.bitvec)
+      recordHeader <- Core.recordHeader.decode(header.remainder)
+      discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
+      shp <- Core.polygon.decode(discriminator.remainder)
+    } yield {
+      assertEquals(header.value.shapeType, ShapeType.polygon)
+      assertEquals(recordHeader.value.wordsLength, 6432)
+      assertEquals(discriminator.value, ShapeType.polygon)
+      val bbox = shp.value.bbox
+      assertEquals(bbox, BBox(-20.0,-90.0,-10.0,-60.0))
+      assertEquals(shp.value.rings.head.head, Point(-20.0, -60.0))
+    }
+    t.toOption.get
+  }
+
+  test("Polygon file") {
+    val pls = Core.readAllSync(TestFiles.polygon.path)
+    assertEquals(pls.size, 10)
+    val types = pls.map(_.shape.getClass.getName).toSet
+    assertEquals(types, Set("works.worace.shp4s.Core$Polygon"))
   }
 }
