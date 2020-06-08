@@ -49,7 +49,9 @@ class CoreTest extends munit.FunSuite {
       header <- Core.header.decode(file.bitvec)
       recordHeader <- Core.recordHeader.decode(header.remainder)
       discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
-      shape <- scodec.codecs.fixedSizeBits(recordHeader.value.bitLength, decoder).decode(discriminator.remainder)
+      shape <- scodec.codecs
+        .fixedSizeBits(recordHeader.value.bitLength, decoder)
+        .decode(discriminator.remainder)
     } yield {
       test(shape.value)
     }

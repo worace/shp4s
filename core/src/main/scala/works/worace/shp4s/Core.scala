@@ -244,7 +244,7 @@ object Core {
 // * [X] PolyLine
 // * [X] Polygon
 // * [X] MultiPoint
-// * [ ] PointZ
+// * [X] PointZ
 // * [ ] PolylineZ
 // * [ ] PolygonZ
 // * [X] MultiPointZ
