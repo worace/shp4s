@@ -13,6 +13,7 @@ import works.worace.shp4s.Core.Shape
 import scodec.Codec
 import works.worace.shp4s.Core.Point
 import works.worace.shp4s.Core.PointZ
+import works.worace.shp4s.Core.MultiPoint
 
 case class Resource(url: URL) {
   def bytes: Array[Byte] = Files.readAllBytes(Paths.get(url.getPath))
@@ -39,7 +40,9 @@ class CoreTest extends munit.FunSuite {
     assert((a - b).abs < delta, s"Expected $a within $delta of $b")
   }
 
-  def shapeTest[S <: Shape](file: Resource, discrim: Int, decoder: Codec[S])(test: S => Unit): Unit = {
+  def shapeTest[S <: Shape](file: Resource, discrim: Int, decoder: Codec[S])(
+    test: S => Unit
+  ): Unit = {
     val t = for {
       header <- Core.header.decode(file.bitvec)
       recordHeader <- Core.recordHeader.decode(header.remainder)
@@ -92,7 +95,7 @@ class CoreTest extends munit.FunSuite {
 
   test("Polyline") {
     shapeTest(TestFiles.polyline, ShapeType.polyline, Core.polyline) { pl =>
-      val bb = BBox(-118.48595907794942,29.394034927600217,-81.68213083231271,34.08730621013162)
+      val bb = BBox(-118.48595907794942, 29.394034927600217, -81.68213083231271, 34.08730621013162)
       assertEquals(pl.bbox, bb)
       assertEquals(pl.lines.head.head, Point(-118.48595907794942, 34.01473938049082))
     }
@@ -108,7 +111,7 @@ class CoreTest extends munit.FunSuite {
   test("Polygon") {
     shapeTest(TestFiles.polygon, ShapeType.polygon, Core.polygon) { shp =>
       val bbox = shp.bbox
-      assertEquals(bbox, BBox(-20.0,-90.0,-10.0,-60.0))
+      assertEquals(bbox, BBox(-20.0, -90.0, -10.0, -60.0))
       assertEquals(shp.rings.head.head, Point(-20.0, -60.0))
     }
   }
@@ -126,5 +129,23 @@ class CoreTest extends munit.FunSuite {
       assertEquals(bbox, BBox(-123.0, -20.0, 10.0, 47.5234523))
       assertEquals(shp.points, Vector(Point(10.0, -20.0), Point(-123.0, 47.5234523)))
     }
+  }
+
+  test("MultiPoint File") {
+    val mps = Core.readAllSync(TestFiles.multiPoint.path)
+    assertEquals(mps.size, 2)
+
+    val exp = Vector(
+      MultiPoint(
+        BBox(-123.0, -20.0, 10.0, 47.5234523),
+        Vector(Point(10.0, -20.0), Point(-123.0, 47.5234523))
+      ),
+      MultiPoint(
+        BBox(-83.0, -20.23, 145.0, 24.0293),
+        Vector(Point(5.2, -7.0), Point(-83.0, 24.0293), Point(145.0, -20.23))
+      )
+    )
+
+    assertEquals(mps.map(_.shape), exp)
   }
 }
