@@ -246,7 +246,6 @@ object Core {
 // numparts (int) == num rings
 // numpoints (int)
 
-
 // Types - 14
 // * [X] NullShape
 // * [X] Point
@@ -262,6 +261,8 @@ object Core {
 // * [ ] PolygonM
 // * [ ] MultiPointM
 // * [ ] MultiPatch
+// * [X] DBF
+// * [ ] DBF proper resource handling (cats bracket? closing in finally?)
 
 // TODO Edge Cases
 // * [ ] Verify PointZ file with M values
