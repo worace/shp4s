@@ -206,17 +206,26 @@ object Core {
   val shpStream: StreamDecoder[ShapeRecord] = StreamDecoder
     .many(ShpCodecs.shape)
 
+  case class ShapeWithProperties(rowNumber: Int, shape: Shape, properties: Map[String, DBFValue])
   val HEADER_SIZE = 100
-  def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, ShapeRecord] = {
-    fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
+  def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, ShapeWithProperties] = {
+    val dbfPath = path.resolveSibling(path.getFileName.toString.replace(".shp", ".dbf"))
+    val dbfReader = new DBFIterator(dbfPath)
+
+    val props = fs2.Stream.fromIterator[IO](dbfReader)
+    val shapes = fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
       fs2.io.file
         .readAll[IO](path, blocker, 4096)
         .drop(HEADER_SIZE)
         .through(shpStream.toPipeByte)
     }
+
+    shapes.zip(props).map { case (shape, props) =>
+      ShapeWithProperties(shape.header.recordNumber, shape.shape, props)
+    }
   }
 
-  def readAllSync(path: Path)(implicit cs: ContextShift[IO]): Vector[ShapeRecord] = {
+  def readAllSync(path: Path)(implicit cs: ContextShift[IO]): Vector[ShapeWithProperties] = {
     streamShapefile(path).compile.toVector.unsafeRunSync()
   }
 

@@ -36,7 +36,6 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("reading a header") {
-    println(TestFiles.points.path)
     val hT = Core.readHeader(TestFiles.points.bytes)
     assert(hT.isSuccess)
     val h = hT.get
