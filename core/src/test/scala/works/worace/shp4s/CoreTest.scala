@@ -111,16 +111,16 @@ class CoreTest extends munit.FunSuite {
 
     val bv = TestFiles.polyline.bitvec
     val h = Core.header.decode(bv).toOption.get
-    assertEquals(h.value.shapeType, ShapeType.polyLine)
+    assertEquals(h.value.shapeType, ShapeType.polyline)
     val rech = Core.recordHeader.decode(h.remainder).toOption.get
     val discrim = scodec.codecs.int32L.decode(rech.remainder).toOption.get
-    assertEquals(discrim.value, ShapeType.polyLine)
+    assertEquals(discrim.value, ShapeType.polyline)
 
     println("rec header")
     println(rech)
     val polylineData = discrim.remainder.take(rech.value.bitLength)
 
-    val plAtt = Core.polyLineParts.decode(polylineData)
+    val plAtt = Core.polylineParts.decode(polylineData)
     assert(plAtt.isSuccessful)
     val pl = plAtt.toOption.get.value
     assertEquals(pl.numParts, 3)
@@ -165,13 +165,21 @@ class CoreTest extends munit.FunSuite {
     }
 
 
-    val plfullAtt = Core.polyLine.decode(polylineData)
+    val plfullAtt = Core.polyline.decode(polylineData)
     println("fullatt")
     println(plfullAtt.isSuccessful)
-    val pointVec = plfullAtt.toOption.get.value._2
-    println(pointVec.slice(0, 34))
+    println(plfullAtt)
+    // val pointVec = plfullAtt.toOption.get.value._2
+    // println(pointVec.slice(0, 34))
     // println(pointVec.slice(35, 941))
-    println(pointVec.size)
+    // println(pointVec.size)
     // println(pointVec.slice(942, pointVec.size - 1))
+  }
+
+  test("polyline file") {
+    val pls = Core.readAllSync(TestFiles.polyline.path)
+    assertEquals(pls.size, 233)
+    val types = pls.map(_.shape.getClass.getName).toSet
+    assertEquals(types, Set("works.worace.shp4s.Core$PolyLine"))
   }
 }
