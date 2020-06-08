@@ -105,75 +105,22 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("Polyline") {
-    import scodec.bits._
-    import scodec._
-    import scodec.codecs._
-
-    val bv = TestFiles.polyline.bitvec
-    val h = Core.header.decode(bv).toOption.get
-    assertEquals(h.value.shapeType, ShapeType.polyline)
-    val rech = Core.recordHeader.decode(h.remainder).toOption.get
-    val discrim = scodec.codecs.int32L.decode(rech.remainder).toOption.get
-    assertEquals(discrim.value, ShapeType.polyline)
-
-    println("rec header")
-    println(rech)
-    val polylineData = discrim.remainder.take(rech.value.bitLength)
-
-    val plAtt = Core.polylineParts.decode(polylineData)
-    assert(plAtt.isSuccessful)
-    val pl = plAtt.toOption.get.value
-    assertEquals(pl.numParts, 3)
-    assertEquals(pl.numPoints, 1530)
-    assertEquals(pl.partOffsets, Vector(0, 35, 942))
-
-    for {
-      bbox <- Core.bbox.decode(polylineData)
-      numParts <- scodec.codecs.int32L.decode(bbox.remainder)
-      numPoints <- scodec.codecs.int32L.decode(numParts.remainder)
-      partOffsets <- scodec.codecs
-        .vectorOfN(provide(numParts.value), int32L)
-        .decode(numPoints.remainder)
-      pointone <- Core.point.decode(partOffsets.remainder)
-      pointtwo <- Core.point.decode(pointone.remainder)
-      pointthree <- Core.point.decode(pointtwo.remainder)
-      point4 <- Core.point.decode(pointthree.remainder)
-      point5 <- Core.point.decode(point4.remainder)
-      point6 <- Core.point.decode(point5.remainder)
-      point7 <- Core.point.decode(point5.remainder)
+    val t = for {
+      header <- Core.header.decode(TestFiles.polyline.bitvec)
+      recordHeader <- Core.recordHeader.decode(header.remainder)
+      discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
+      polyline <- Core.polyline.decode(discriminator.remainder)
     } yield {
-      val pointData = partOffsets.remainder
-      // val numPoints = 1530
-      // (1 to 763).foldLeft(pointData) { (rem, i) =>
-      //   println(s"point i: $i")
-      //   val res = Core.point.decode(rem)
-      //   println(res)
-      //   res.toOption.get.remainder
-      // }
-      // println(bbox)
-      // println(numParts)
-      // println("NUM POINTS")
-      // println(numPoints)
-      // println(partOffsets)
-      // println(pointone)
-      // println(pointtwo)
-      // println(pointthree)
-      // println(point4)
-      // println(point5)
-      // println(point6)
-      // println(point7)
+      assertEquals(header.value.shapeType, ShapeType.polyline)
+      assertEquals(recordHeader.value.wordsLength, 12268)
+      assertEquals(discriminator.value, ShapeType.polyline)
+      val bbox = polyline.value.bbox
+      assertInDelta(bbox.xMin, -118.486, 0.01)
+      assertInDelta(bbox.yMin, 29.39, 0.01)
+      assertInDelta(bbox.xMax, -81.68, 0.01)
+      assertInDelta(bbox.yMax, 34.0873, 0.01)
     }
-
-
-    val plfullAtt = Core.polyline.decode(polylineData)
-    println("fullatt")
-    println(plfullAtt.isSuccessful)
-    println(plfullAtt)
-    // val pointVec = plfullAtt.toOption.get.value._2
-    // println(pointVec.slice(0, 34))
-    // println(pointVec.slice(35, 941))
-    // println(pointVec.size)
-    // println(pointVec.slice(942, pointVec.size - 1))
+    t.toOption.get
   }
 
   test("polyline file") {
