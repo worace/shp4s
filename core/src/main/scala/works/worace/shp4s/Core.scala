@@ -200,31 +200,6 @@ object Core {
   // 4               4                               4               8           8
   // 1 (Point Type), 10 (Point size - 16 bit words), 1 (Point Type), X (Double), Y (Double)
   def readHeader(bytes: Array[Byte]): Try[ShapefileHeader] = {
-    println(s"total size: ${bytes.size}")
-    val r = for {
-      h <- header.decode(BitVector(bytes))
-      shp1 <- shape.decode(h.remainder)
-      // shp2 <- shape.decode(shp1.remainder)
-      // shp3 <- shape.decode(shp2.remainder)
-    } yield {
-      println("header")
-      println(h)
-      println(s"used: ${(bytes.size - h.remainder.size / 8)}")
-      println(s"leftover: ${h.remainder.size / 8}")
-      println("decoded shp1 ********")
-      println(shp1)
-      // println(s"leftover: ${shp1.remainder.size / 8}")
-      // // point size should be 4+ 4 + 4 +8 + 8 = 28
-      // println(s"used: ${(h.remainder.size - shp1.remainder.size) / 8}")
-      // println("decoded shp2 ********")
-      // println(shp2)
-      // println(s"leftover: ${shp2.remainder.size / 8}")
-      // println("SHP 3")
-      // println(shp3)
-    }
-    println("result:")
-    println(r)
-
     header.decode(BitVector(bytes)).toTry.map(_.value)
   }
 }
