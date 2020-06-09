@@ -49,6 +49,7 @@ object Core {
   )
 
   case class BBox(xMin: Double, yMin: Double, xMax: Double, yMax: Double)
+  case class BRange(min: Double, max: Double)
   case class RangedValues(min: Double, max: Double, values: Vector[Double])
   object RangedValues {
     val zero: RangedValues = RangedValues(0.0, 0.0, Vector())
@@ -64,8 +65,11 @@ object Core {
     z: RangedValues,
     m: Option[RangedValues]
   ) extends Shape
-  case class PolyLine(bbox: BBox, lines: Vector[Vector[Point]]) extends Shape
+  case class PolyLine(bbox: BBox, lines: Vector[Vector[Point]]) extends Shape {
+    def numPoints: Int = lines.map(_.size).sum
+  }
   case class Polygon(bbox: BBox, rings: Vector[Vector[Point]]) extends Shape
+  case class PolyLineZ(bbox: BBox, zRange: BRange, mRange: Option[BRange], points: Vector[Vector[PointZ]])
 
   val MIN_SHP_DOUBLE: Double = -1.0E38
   object PointZ {
@@ -103,8 +107,6 @@ object Core {
     }
   )
 
-
-
   private case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
   private val polylineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
 
@@ -121,6 +123,17 @@ object Core {
 
 
   case class ShapeRecord(header: RecordHeader, shape: Shape)
+
+  object ShapeType {
+    val nullShape = 0
+    val point = 1
+    val polyline = 3
+    val polygon = 5
+    val multiPoint = 8
+    val pointZ = 11
+    val polyLineZ = 13
+    val multiPointZ = 18
+  }
 
   object ShpCodecs {
     val point = (doubleL :: doubleL).as[Point]
@@ -152,6 +165,13 @@ object Core {
     val pointZ = (doubleL :: doubleL :: doubleL :: ifAvailable(doubleL, Double.MinValue)).xmap(
       { case (x :: y :: z :: m :: HNil) => PointZ(x, y, z, m)  },
       (pz: PointZ) => pz.x :: pz.y :: pz.z :: pz.m :: HNil
+    )
+
+    val polylineZ = polyline.flatPrepend { pl =>
+      rangedValues(pl.numPoints) :: ifAvailable(rangedValues(numPoints), RangedValues.zero)
+    }.xmap(
+      { case pl :: zVals :: mVals :: HNil => PolyLineZ(pl.bbox, zVals, mVals, pl.points) },
+      { (plz: PolyLineZ) => ??? }
     )
 
     val shape = recordHeader
@@ -191,16 +211,6 @@ object Core {
         ).hlist
       }
       .as[ShapeRecord]
-  }
-
-  object ShapeType {
-    val nullShape = 0
-    val point = 1
-    val polyline = 3
-    val polygon = 5
-    val multiPoint = 8
-    val pointZ = 11
-    val multiPointZ = 18
   }
 
   val shpStream: StreamDecoder[ShapeRecord] = StreamDecoder
