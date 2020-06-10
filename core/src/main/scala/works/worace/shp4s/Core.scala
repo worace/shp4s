@@ -290,3 +290,6 @@ object Core {
 // * [ ] Verify PointZ file with M values
 // * [ ] Verify MultiPointZ with M values
 // * [ ] Convert MultiPointZ to hold Vector[PointZ] values
+// * [ ] PolylineZ with M Values
+// * [ ] *-Z encoding with empty M values -- should omit entirely rather than encoding 0's
+// * [ ] PolyLineZ Sample File
