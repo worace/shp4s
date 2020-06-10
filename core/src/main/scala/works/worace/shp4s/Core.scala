@@ -49,8 +49,10 @@ object Core {
   )
 
   case class BBox(xMin: Double, yMin: Double, xMax: Double, yMax: Double)
-  case class BRange(min: Double, max: Double)
-  case class RangedValues(min: Double, max: Double, values: Vector[Double])
+  case class Range(min: Double, max: Double)
+  case class RangedValues(min: Double, max: Double, values: Vector[Double]) {
+    def range: Range = Range(min, max)
+  }
   object RangedValues {
     val zero: RangedValues = RangedValues(0.0, 0.0, Vector())
   }
@@ -69,7 +71,7 @@ object Core {
     def numPoints: Int = lines.map(_.size).sum
   }
   case class Polygon(bbox: BBox, rings: Vector[Vector[Point]]) extends Shape
-  case class PolyLineZ(bbox: BBox, zRange: BRange, mRange: Option[BRange], points: Vector[Vector[PointZ]])
+  case class PolyLineZ(bbox: BBox, zRange: Range, mRange: Option[Range], points: Vector[Vector[PointZ]])
 
   val MIN_SHP_DOUBLE: Double = -1.0E38
   object PointZ {
@@ -121,7 +123,6 @@ object Core {
     }
   }
 
-
   case class ShapeRecord(header: RecordHeader, shape: Shape)
 
   object ShapeType {
@@ -167,11 +168,22 @@ object Core {
       (pz: PointZ) => pz.x :: pz.y :: pz.z :: pz.m :: HNil
     )
 
+    // Codec for polylineZ based on reading polyline and then handling the trailing z/m values
     val polylineZ = polyline.flatPrepend { pl =>
-      rangedValues(pl.numPoints) :: ifAvailable(rangedValues(numPoints), RangedValues.zero)
+      rangedValues(pl.numPoints) :: ifAvailable(rangedValues(pl.numPoints), RangedValues.zero)
     }.xmap(
-      { case pl :: zVals :: mVals :: HNil => PolyLineZ(pl.bbox, zVals, mVals, pl.points) },
-      { (plz: PolyLineZ) => ??? }
+      { case pl :: zVals :: mVals :: HNil => {
+        val pointZs = Util.zippedWithFlatVec(pl.lines, zVals.values) { (point, z) =>
+          PointZ(point.x, point.y, z, None)
+        }
+        PolyLineZ(pl.bbox, zVals.range, mVals.map(_.range), pointZs)
+      } },
+      (plz: PolyLineZ) => {
+        val pointsXY = plz.points.map(line => line.map(p => Point(p.x, p.y)))
+        val zVals = Util.pointZRingsZValues(plz.zRange, plz.points)
+        val mVals = Util.pointZRingsMValues(plz.mRange, plz.points)
+        PolyLine(plz.bbox, pointsXY) :: zVals :: mVals :: HNil
+      }
     )
 
     val shape = recordHeader
