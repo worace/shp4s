@@ -19,8 +19,9 @@ object TestFiles {
   val dbf = Resource("ne_10m_admin_0_antarctic_claims.dbf")
   val points = Resource("world-cities.shp")
   val multiPointZ = Resource("multipointZ.shp")
-  val polyline = Resource("usa-major-highways.shp")
+  val polyLine = Resource("usa-major-highways.shp")
   val polygon = Resource("ne_10m_admin_0_antarctic_claims.shp")
   val multiPoint = Resource("multipoint.shp")
   val pointZ = Resource("pointz.shp")
+  val polygonZ = Resource("w001n05f.shp")
 }

@@ -71,7 +71,8 @@ object Core {
     def numPoints: Int = lines.map(_.size).sum
   }
   case class Polygon(bbox: BBox, rings: Vector[Vector[Point]]) extends Shape
-  case class PolyLineZ(bbox: BBox, zRange: Range, mRange: Option[Range], points: Vector[Vector[PointZ]])
+  case class PolyLineZ(bbox: BBox, zRange: Range, mRange: Option[Range], lines: Vector[Vector[PointZ]]) extends Shape
+  case class PolygonZ(bbox: BBox, zRange: Range, mRange: Option[Range], rings: Vector[Vector[PointZ]]) extends Shape
 
   val MIN_SHP_DOUBLE: Double = -1.0E38
   object PointZ {
@@ -110,9 +111,9 @@ object Core {
   )
 
   private case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
-  private val polylineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
+  private val polyLineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
 
-  private def polylineSlices(points: Vector[Point], offsets: Vector[Int]): Vector[Vector[Point]] = {
+  private def polyLineSlices(points: Vector[Point], offsets: Vector[Int]): Vector[Vector[Point]] = {
     if (offsets.size > 1) {
       offsets
         .sliding(2)
@@ -128,11 +129,12 @@ object Core {
   object ShapeType {
     val nullShape = 0
     val point = 1
-    val polyline = 3
+    val polyLine = 3
     val polygon = 5
     val multiPoint = 8
     val pointZ = 11
     val polyLineZ = 13
+    val polygonZ = 15
     val multiPointZ = 18
   }
 
@@ -143,13 +145,13 @@ object Core {
       numPoints => vectorOfN(provide(numPoints), point)
     )(points => points.size)).as[MultiPoint]
     val multiPointZ = (bbox :: multiPointZBody).as[MultiPointZ]
-    val polyline: Codec[PolyLine] = polylineHeader.flatPrepend { h =>
+    val polyLine: Codec[PolyLine] = polyLineHeader.flatPrepend { h =>
       vectorOfN(provide(h.numParts), int32L).hlist
     }.flatPrepend { case h :: _ =>
         vectorOfN(provide(h.numPoints), point).hlist
     }.xmap(
       { case ((header :: offsets :: HNil) :: points :: HNil) =>
-        PolyLine(header.bbox, polylineSlices(points, offsets)) },
+        PolyLine(header.bbox, polyLineSlices(points, offsets)) },
       (pl: PolyLine) => {
         val points = pl.lines.flatten
         val numPoints = points.size
@@ -158,7 +160,7 @@ object Core {
         (header :: offsets :: HNil) :: points :: HNil
       }
     )
-    val polygon: Codec[Polygon] = polyline.xmap(
+    val polygon: Codec[Polygon] = polyLine.xmap(
       pl => Polygon(pl.bbox, pl.lines),
       poly => PolyLine(poly.bbox, poly.rings)
     )
@@ -169,7 +171,7 @@ object Core {
     )
 
     // Codec for polylineZ based on reading polyline and then handling the trailing z/m values
-    val polylineZ = polyline.flatPrepend { pl =>
+    val polyLineZ = polyLine.flatPrepend { pl =>
       rangedValues(pl.numPoints) :: ifAvailable(rangedValues(pl.numPoints), RangedValues.zero)
     }.xmap(
       { case pl :: zVals :: mVals :: HNil => {
@@ -179,11 +181,16 @@ object Core {
         PolyLineZ(pl.bbox, zVals.range, mVals.map(_.range), pointZs)
       } },
       (plz: PolyLineZ) => {
-        val pointsXY = plz.points.map(line => line.map(p => Point(p.x, p.y)))
-        val zVals = Util.pointZRingsZValues(plz.zRange, plz.points)
-        val mVals = Util.pointZRingsMValues(plz.mRange, plz.points)
+        val pointsXY = plz.lines.map(line => line.map(p => Point(p.x, p.y)))
+        val zVals = Util.pointZRingsZValues(plz.zRange, plz.lines)
+        val mVals = Util.pointZRingsMValues(plz.mRange, plz.lines)
         PolyLine(plz.bbox, pointsXY) :: zVals :: mVals :: HNil
       }
+    )
+
+    val polygonZ: Codec[PolygonZ] = polyLineZ.xmap(
+      pl => PolygonZ(pl.bbox, pl.zRange, pl.mRange, pl.lines),
+      poly => PolyLineZ(poly.bbox, poly.zRange, poly.mRange, poly.rings)
     )
 
     val shape = recordHeader
@@ -208,10 +215,10 @@ object Core {
               case mpz: MultiPointZ => Some(mpz)
               case _                => None
             }(multiPointZ)
-            .subcaseO(ShapeType.polyline) {
+            .subcaseO(ShapeType.polyLine) {
               case pl: PolyLine => Some(pl)
               case _                => None
-            }(polyline)
+            }(polyLine)
             .subcaseO(ShapeType.polygon) {
               case p: Polygon => Some(p)
               case _                => None
@@ -220,6 +227,10 @@ object Core {
               case p: PointZ => Some(p)
               case o                => None
             }(pointZ)
+            .subcaseO(ShapeType.polygonZ) {
+              case p: PolygonZ => Some(p)
+              case o                => None
+            }(polygonZ)
         ).hlist
       }
       .as[ShapeRecord]

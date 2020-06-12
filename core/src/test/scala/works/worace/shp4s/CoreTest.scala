@@ -2,14 +2,7 @@ package works.worace.shp4s
 
 import cats.effect.{IO, ContextShift}
 import scodec.Codec
-import works.worace.shp4s.Core.MultiPointZ
-import works.worace.shp4s.Core.ShapeType
-import works.worace.shp4s.Core.BBox
-import works.worace.shp4s.Core.Shape
-import works.worace.shp4s.Core.Point
-import works.worace.shp4s.Core.PointZ
-import works.worace.shp4s.Core.MultiPoint
-import Core.ShpCodecs
+import works.worace.shp4s.Core._
 
 class CoreTest extends munit.FunSuite {
   implicit val csIO: ContextShift[IO] =
@@ -17,6 +10,13 @@ class CoreTest extends munit.FunSuite {
 
   def assertInDelta(a: Double, b: Double, delta: Double): Unit = {
     assert((a - b).abs < delta, s"Expected $a within $delta of $b")
+  }
+
+  def assertBBox(a: BBox, b: BBox): Unit = {
+    assertInDelta(a.xMin, b.xMin, 0.0001)
+    assertInDelta(a.yMin, b.yMin, 0.0001)
+    assertInDelta(a.xMax, b.xMax, 0.0001)
+    assertInDelta(a.yMax, b.yMax, 0.0001)
   }
 
   def shapeTest[S <: Shape](file: Resource, discrim: Int, decoder: Codec[S])(
@@ -74,7 +74,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("Polyline") {
-    shapeTest(TestFiles.polyline, ShapeType.polyline, ShpCodecs.polyline) { pl =>
+    shapeTest(TestFiles.polyLine, ShapeType.polyLine, ShpCodecs.polyLine) { pl =>
       val bb = BBox(-118.48595907794942, 29.394034927600217, -81.68213083231271, 34.08730621013162)
       assertEquals(pl.bbox, bb)
       assertEquals(pl.lines.head.head, Point(-118.48595907794942, 34.01473938049082))
@@ -82,7 +82,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("polyline file") {
-    val pls = Core.readAllSync(TestFiles.polyline.path)
+    val pls = Core.readAllSync(TestFiles.polyLine.path)
     assertEquals(pls.size, 233)
     val types = pls.map(_.shape.getClass.getName).toSet
     assertEquals(types, Set("works.worace.shp4s.Core$PolyLine"))
@@ -144,5 +144,46 @@ class CoreTest extends munit.FunSuite {
         PointZ(180.0, -22.0, 34.0, None)
       )
     )
+  }
+
+//   test("PolyLineZ") {
+// -    xMin = -0.7965277777777777,
+// -    yMin = 5.981805555555556,
+// -    xMax = -0.7895833333333334,
+// -    yMax = 5.992361111111111
+// +    xMin = -123.0,
+// +    yMin = -20.0,
+// +    xMax = 10.0,
+// +    yMax = 47.5234523
+//    ),
+//    zRange = Range(
+// -    min = 156.0,
+// -    max = 156.0
+// +    min = 0.0,
+// +    max = 0.0
+//    ),
+
+  // shapeTest(TestFiles.polyLineZ, ShapeType.polyLineZ, ShpCodecs.polyLineZ) { shp =>
+    // val hTpz = Core.readHeader(TestFiles.polyLineZ.bytes)
+    // println(hTpz.map(_.shapeType))
+
+  //   // assertEquals(shp, PolyLineZ(bbox, Range(0.0, 0.0), None, lines))
+  // }
+
+  test("PolygonZ File") {
+    val pzs = Core.readAllSync(TestFiles.polygonZ.path)
+    assertEquals(pzs.size, 16)
+    val pz1 = pzs.head.shape
+    val bbox = BBox(-0.7965, 5.98180, -0.78958, 5.99236)
+  //   val lines = Vector(Vector(PointZ(1.0, 2.0, -3.0, None)))
+  //   // println(shp)
+    assertBBox(pz1.bbox, bbox)
+    // assertEquals(
+    //   PolygonZ(),
+    //   Vector(
+    //     PointZ(1.0, 2.0, -3.0, None),
+    //     PointZ(180.0, -22.0, 34.0, None)
+    //   )
+    // )
   }
 }
