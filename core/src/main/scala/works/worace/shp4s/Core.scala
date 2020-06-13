@@ -227,45 +227,7 @@ object Core {
     streamShapefile(path).compile.toVector.unsafeRunSync()
   }
 
-  // Header
-  // Records:
-  //   Record Header: Shape Type (int), Length (int)
-  //   Record: Shape Type (int), Length#Bytes
-  // Flat:
-  // 10 x 16 = 160 bits; (4 + 8 + 8) x 8 = 160
-  // 4               4                               4               8           8
-  // 1 (Point Type), 10 (Point size - 16 bit words), 1 (Point Type), X (Double), Y (Double)
   def readHeader(bytes: Array[Byte]): Try[FileHeader] = {
     FileHeader.codec.decode(BitVector(bytes)).toTry.map(_.value)
   }
 }
-// Polygon -- same as polyline
-// bbox
-// numparts (int) == num rings
-// numpoints (int)
-
-// Types - 14
-// * [X] NullShape
-// * [X] Point
-// * [X] PolyLine
-// * [X] Polygon
-// * [X] MultiPoint
-// * [X] PointZ
-// * [x] PolylineZ
-// * [x] PolygonZ
-// * [X] MultiPointZ
-// * [x] PointM
-// * [ ] PolyLineM
-// * [ ] PolygonM
-// * [x] MultiPointM
-// * [ ] MultiPatch
-// * [X] DBF
-// * [ ] DBF proper resource handling (cats bracket? closing in finally?)
-
-// TODO Edge Cases
-// * [ ] Verify PointZ file with M values
-// * [ ] Verify MultiPointZ with M values
-// * [ ] Convert MultiPointZ to hold Vector[PointZ] values
-// * [ ] PolylineZ with M Values
-// * [ ] *-Z encoding with empty M values -- should omit entirely rather than encoding 0's
-// * [x] PolyLineZ Sample File
