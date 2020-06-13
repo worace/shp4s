@@ -1,21 +1,23 @@
 package works.worace.shp4s
 
-import Core.{Range, RangedValues, PointZ}
+import Core.{Range, RangedValues, PointZ, Point}
 
 private object Util {
+  def sliceIndices[_](vec: Vector[Vector[_]]): Vector[(Int, Int)] = {
+    var start: Int = 0
+    vec.map { slice =>
+      val indices = (start, start + slice.size)
+      start += slice.size
+      indices
+    }
+  }
+
   def zippedWithFlatVec[A, B, C](
     vec: Vector[Vector[A]],
     flat: Vector[B])(
     h: (A, B) => C
   ): Vector[Vector[C]] = {
-    val sliceIndices = vec
-      .map(_.size)
-      .map(_ - 1)
-      .prepended(0)
-      .sliding(2)
-      .toVector
-
-    vec.zip(sliceIndices).map { case (slice, Vector(start, stop)) =>
+    vec.zip(sliceIndices(vec)).map { case (slice, (start, stop)) =>
       val leftSlice = flat.slice(start, stop)
       slice.zip(leftSlice).map { case (a, b) => h(a, b) }
     }
@@ -30,6 +32,19 @@ private object Util {
     range.map { range =>
       val mVals = rings.flatMap(line => line.map(_.m.getOrElse(0.0)))
       RangedValues(range.min, range.max, mVals)
+    }
+  }
+
+  def offsetSlices[T](points: Vector[T], offsets: Vector[Int]): Vector[Vector[T]] = {
+    if (offsets.size > 1) {
+      val slices = offsets.appended(points.size)
+
+      slices
+        .sliding(2)
+        .map { case Vector(start, finish) => points.slice(start, finish) }
+        .toVector
+    } else {
+      Vector(points)
     }
   }
 }

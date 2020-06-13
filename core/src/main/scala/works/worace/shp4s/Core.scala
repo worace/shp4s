@@ -113,17 +113,6 @@ object Core {
   private case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
   private val polyLineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
 
-  private def polyLineSlices(points: Vector[Point], offsets: Vector[Int]): Vector[Vector[Point]] = {
-    if (offsets.size > 1) {
-      offsets
-        .sliding(2)
-        .map { case Vector(start, finish) => points.slice(start, finish) }
-        .toVector
-    } else {
-      Vector(points)
-    }
-  }
-
   case class ShapeRecord(header: RecordHeader, shape: Shape)
 
   object ShapeType {
@@ -151,7 +140,7 @@ object Core {
         vectorOfN(provide(h.numPoints), point).hlist
     }.xmap(
       { case ((header :: offsets :: HNil) :: points :: HNil) =>
-        PolyLine(header.bbox, polyLineSlices(points, offsets)) },
+        PolyLine(header.bbox, Util.offsetSlices(points, offsets)) },
       (pl: PolyLine) => {
         val points = pl.lines.flatten
         val numPoints = points.size
