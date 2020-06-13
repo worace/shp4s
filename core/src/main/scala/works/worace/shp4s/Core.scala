@@ -14,79 +14,16 @@ import java.nio.file.Path
 import shapeless.::
 import scala.util.Try
 
-case class ShapefileHeader(
-  length: Int, shapeType: Int, xMin: Double, xMax: Double, yMin: Double, yMax: Double,
-  zMin: Double, zMax: Double, mMin: Double, mMax: Double
-)
+case class BBox(xMin: Double, yMin: Double, xMax: Double, yMax: Double)
+case class Range(min: Double, max: Double)
+case class RangedValues(min: Double, max: Double, values: Vector[Double]) {
+  def range: Range = Range(min, max)
+}
+object RangedValues {
+  val zero: RangedValues = RangedValues(0.0, 0.0, Vector())
+}
 
 object Core {
-  val fileCode: Codec[Unit] = constant(hex"000270a")
-  val emptyInt: Codec[Unit] = constant(hex"0000000")
-  val version: Codec[Unit] = constant(hex"e8030000")
-  val fileLength: Codec[Int] = int32
-  val shapeType: Codec[Int] = int32L
-  val xMin: Codec[Double] = doubleL
-  val xMax: Codec[Double] = doubleL
-  val yMin: Codec[Double] = doubleL
-  val yMax: Codec[Double] = doubleL
-  val zMin: Codec[Double] = doubleL
-  val zMax: Codec[Double] = doubleL
-  val mMin: Codec[Double] = doubleL
-  val mMax: Codec[Double] = doubleL
-
-  val header = (fileCode :: emptyInt :: emptyInt ::
-    emptyInt :: emptyInt :: emptyInt ::
-    fileLength :: version :: shapeType ::
-    xMin :: yMin :: xMax :: yMax :: zMin :: zMax ::
-    mMin :: mMax).xmap(
-    { case (_fc :: _ :: _ :: _ :: _ :: _ :: length :: _version ::
-      shapeType :: xMin :: yMin :: xMax :: yMax :: zMin :: zMax :: mMin :: mMax :: HNil) =>
-      ShapefileHeader(length, shapeType, xMin, xMax, yMin, yMax, zMin, zMax, mMin, mMax)
-    },
-      (h: ShapefileHeader) => () :: () :: () :: () :: () :: () :: h.length :: () ::
-        h.shapeType ::
-        h.xMin :: h.yMin :: h.xMax :: h.yMax :: h.zMin :: h.zMax :: h.mMin :: h.mMax :: HNil
-  )
-
-  case class BBox(xMin: Double, yMin: Double, xMax: Double, yMax: Double)
-  case class Range(min: Double, max: Double)
-  case class RangedValues(min: Double, max: Double, values: Vector[Double]) {
-    def range: Range = Range(min, max)
-  }
-  object RangedValues {
-    val zero: RangedValues = RangedValues(0.0, 0.0, Vector())
-  }
-  sealed trait Shape
-  case object NullShape extends Shape
-  case class Point(x: Double, y: Double) extends Shape
-  case class PointZ(x: Double, y: Double, z: Double, m: Option[Double]) extends Shape
-  case class PointM(x: Double, y: Double, m: Double) extends Shape {
-    def pointXY: Point = Point(x, y)
-  }
-  case class MultiPoint(bbox: BBox, points: Vector[Point]) extends Shape
-  case class MultiPointZ(
-    bbox: BBox,
-    points: Vector[Point],
-    z: RangedValues,
-    m: Option[RangedValues]
-  ) extends Shape
-  case class MultiPointM(bbox: BBox, mRange: Range, points: Vector[PointM]) extends Shape {
-    def mRangedValues: RangedValues = RangedValues(mRange.min, mRange.max, points.map(_.m))
-  }
-  case class PolyLine(bbox: BBox, lines: Vector[Vector[Point]]) extends Shape {
-    def numPoints: Int = lines.map(_.size).sum
-  }
-  case class Polygon(bbox: BBox, rings: Vector[Vector[Point]]) extends Shape
-  case class PolyLineZ(bbox: BBox, zRange: Range, mRange: Option[Range], lines: Vector[Vector[PointZ]]) extends Shape
-  case class PolygonZ(bbox: BBox, zRange: Range, mRange: Option[Range], rings: Vector[Vector[PointZ]]) extends Shape
-
-  val MIN_SHP_DOUBLE: Double = -1.0E38
-  object PointZ {
-    def apply(x: Double, y: Double, z: Double, m: Double): PointZ = {
-      PointZ(x, y, z, Some(m).filter(_ > MIN_SHP_DOUBLE))
-    }
-  }
-
   case class RecordHeader(recordNumber: Int, wordsLength: Int) {
     def byteLength: Int = wordsLength * 2
     def bitLength: Int = byteLength * 8
@@ -268,9 +205,8 @@ object Core {
   val shpStream: StreamDecoder[ShapeRecord] = StreamDecoder
     .many(ShpCodecs.shape)
 
-  case class ShapeWithProperties(rowNumber: Int, shape: Shape, properties: Map[String, DBFValue])
   val HEADER_SIZE = 100
-  def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, ShapeWithProperties] = {
+  def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, Feature] = {
     val dbfPath = path.resolveSibling(path.getFileName.toString.replace(".shp", ".dbf"))
     val dbfReader = new DBFIterator(dbfPath)
 
@@ -283,11 +219,11 @@ object Core {
     }
 
     shapes.zip(props).map { case (shape, props) =>
-      ShapeWithProperties(shape.header.recordNumber, shape.shape, props)
+      Feature(shape.header.recordNumber, shape.shape, props)
     }
   }
 
-  def readAllSync(path: Path)(implicit cs: ContextShift[IO]): Vector[ShapeWithProperties] = {
+  def readAllSync(path: Path)(implicit cs: ContextShift[IO]): Vector[Feature] = {
     streamShapefile(path).compile.toVector.unsafeRunSync()
   }
 
@@ -299,8 +235,8 @@ object Core {
   // 10 x 16 = 160 bits; (4 + 8 + 8) x 8 = 160
   // 4               4                               4               8           8
   // 1 (Point Type), 10 (Point size - 16 bit words), 1 (Point Type), X (Double), Y (Double)
-  def readHeader(bytes: Array[Byte]): Try[ShapefileHeader] = {
-    header.decode(BitVector(bytes)).toTry.map(_.value)
+  def readHeader(bytes: Array[Byte]): Try[FileHeader] = {
+    FileHeader.codec.decode(BitVector(bytes)).toTry.map(_.value)
   }
 }
 // Polygon -- same as polyline

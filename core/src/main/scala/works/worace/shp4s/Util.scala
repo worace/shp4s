@@ -1,7 +1,5 @@
 package works.worace.shp4s
 
-import Core.{Range, RangedValues, PointZ, Point}
-
 private object Util {
   def sliceIndices[_](vec: Vector[Vector[_]]): Vector[(Int, Int)] = {
     var start: Int = 0

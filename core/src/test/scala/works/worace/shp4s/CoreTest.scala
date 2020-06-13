@@ -23,7 +23,7 @@ class CoreTest extends munit.FunSuite {
     test: S => Unit
   ): Unit = {
     val t = for {
-      header <- Core.header.decode(file.bitvec)
+      header <- FileHeader.codec.decode(file.bitvec)
       recordHeader <- Core.recordHeader.decode(header.remainder)
       discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
       shape <- scodec.codecs
@@ -55,7 +55,7 @@ class CoreTest extends munit.FunSuite {
     val points = Core.readAllSync(TestFiles.points.path)
     assertEquals(points.size, 2539)
     val shapeTypes = points.map(_.shape).map(_.getClass.getName()).toSet
-    assertEquals(shapeTypes, Set("works.worace.shp4s.Core$Point"))
+    assertEquals(shapeTypes, Set("works.worace.shp4s.Point"))
   }
 
   test("MultiPointZ") {
@@ -70,7 +70,7 @@ class CoreTest extends munit.FunSuite {
     val mpzs = Core.readAllSync(TestFiles.multiPointZ.path)
     assertEquals(mpzs.size, 312)
     val types = mpzs.map(_.shape.getClass.getName).toSet
-    assertEquals(types, Set("works.worace.shp4s.Core$MultiPointZ"))
+    assertEquals(types, Set("works.worace.shp4s.MultiPointZ"))
   }
 
   test("Polyline") {
@@ -85,7 +85,7 @@ class CoreTest extends munit.FunSuite {
     val pls = Core.readAllSync(TestFiles.polyLine.path)
     assertEquals(pls.size, 233)
     val types = pls.map(_.shape.getClass.getName).toSet
-    assertEquals(types, Set("works.worace.shp4s.Core$PolyLine"))
+    assertEquals(types, Set("works.worace.shp4s.PolyLine"))
   }
 
   test("Polygon") {
@@ -100,7 +100,7 @@ class CoreTest extends munit.FunSuite {
     val pls = Core.readAllSync(TestFiles.polygon.path)
     assertEquals(pls.size, 10)
     val types = pls.map(_.shape.getClass.getName).toSet
-    assertEquals(types, Set("works.worace.shp4s.Core$Polygon"))
+    assertEquals(types, Set("works.worace.shp4s.Polygon"))
   }
 
   test("MultiPoint") {
@@ -150,7 +150,7 @@ class CoreTest extends munit.FunSuite {
     shapeTest(TestFiles.polygonZ, ShapeType.polygonZ, ShpCodecs.polygonZ) { shp =>
       val bbox = BBox(-0.7965, 5.98180, -0.78958, 5.99236)
       assertBBox(shp.bbox, bbox)
-      assertEquals(shp.zRange, Core.Range(156.0, 156.0))
+      assertEquals(shp.zRange, Range(156.0, 156.0))
       assertEquals(shp.mRange, None)
       assertEquals(shp.rings.size, 1)
 
