@@ -60,6 +60,9 @@ object Core {
   case object NullShape extends Shape
   case class Point(x: Double, y: Double) extends Shape
   case class PointZ(x: Double, y: Double, z: Double, m: Option[Double]) extends Shape
+  case class PointM(x: Double, y: Double, m: Double) extends Shape {
+    def pointXY: Point = Point(x, y)
+  }
   case class MultiPoint(bbox: BBox, points: Vector[Point]) extends Shape
   case class MultiPointZ(
     bbox: BBox,
@@ -67,6 +70,9 @@ object Core {
     z: RangedValues,
     m: Option[RangedValues]
   ) extends Shape
+  case class MultiPointM(bbox: BBox, mRange: Range, points: Vector[PointM]) extends Shape {
+    def mRangedValues: RangedValues = RangedValues(mRange.min, mRange.max, points.map(_.m))
+  }
   case class PolyLine(bbox: BBox, lines: Vector[Vector[Point]]) extends Shape {
     def numPoints: Int = lines.map(_.size).sum
   }
@@ -110,6 +116,19 @@ object Core {
     }
   )
 
+  private val multiPointMInternal: Codec[MultiPointM] = (bbox :: int32L).flatPrepend { case bbox :: numPoints :: HNil =>
+    vectorOfN(provide(numPoints), ShpCodecs.point) :: rangedValues(numPoints)
+  }.xmap( {
+    case ((bbox :: _ :: HNil) :: points :: mVals :: HNil) => {
+      val pointMs = points.zip(mVals.values).map { case (point, m) => PointM(point.x, point.y, m) }
+      MultiPointM(bbox, mVals.range, pointMs)
+    }
+  },
+    (mp: MultiPointM) => {
+      (mp.bbox :: mp.points.size :: HNil) :: mp.points.map(_.pointXY) :: mp.mRangedValues :: HNil
+    }
+  )
+
   private case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
   private val polyLineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
 
@@ -125,6 +144,8 @@ object Core {
     val polyLineZ = 13
     val polygonZ = 15
     val multiPointZ = 18
+    val pointM = 21
+    val multiPointM = 28
   }
 
   object ShpCodecs {
@@ -159,6 +180,11 @@ object Core {
       (pz: PointZ) => pz.x :: pz.y :: pz.z :: pz.m :: HNil
     )
 
+    val pointM = (doubleL :: doubleL :: doubleL).xmap(
+      { case (x :: y :: m :: HNil) => PointM(x, y, m)  },
+      (p: PointM) => p.x :: p.y :: p.m :: HNil
+    )
+
     // Codec for polylineZ based on reading polyline and then handling the trailing z/m values
     val polyLineZ = polyLine.flatPrepend { pl =>
       rangedValues(pl.numPoints) :: ifAvailable(rangedValues(pl.numPoints), RangedValues.zero)
@@ -181,6 +207,8 @@ object Core {
       pl => PolygonZ(pl.bbox, pl.zRange, pl.mRange, pl.lines),
       poly => PolyLineZ(poly.bbox, poly.zRange, poly.mRange, poly.rings)
     )
+
+    val multiPointM = multiPointMInternal
 
     val shape = recordHeader
       .flatPrepend { header =>
@@ -224,6 +252,14 @@ object Core {
               case p: PolygonZ => Some(p)
               case o                => None
             }(polygonZ)
+            .subcaseO(ShapeType.pointM) {
+              case p: PointM => Some(p)
+              case o                => None
+            }(pointM)
+            .subcaseO(ShapeType.multiPointM) {
+              case s: MultiPointM => Some(s)
+              case o                => None
+            }(multiPointM)
         ).hlist
       }
       .as[ShapeRecord]
@@ -279,13 +315,13 @@ object Core {
 // * [X] Polygon
 // * [X] MultiPoint
 // * [X] PointZ
-// * [ ] PolylineZ
-// * [ ] PolygonZ
+// * [x] PolylineZ
+// * [x] PolygonZ
 // * [X] MultiPointZ
-// * [ ] PointM
+// * [x] PointM
 // * [ ] PolyLineM
 // * [ ] PolygonM
-// * [ ] MultiPointM
+// * [x] MultiPointM
 // * [ ] MultiPatch
 // * [X] DBF
 // * [ ] DBF proper resource handling (cats bracket? closing in finally?)
@@ -296,4 +332,4 @@ object Core {
 // * [ ] Convert MultiPointZ to hold Vector[PointZ] values
 // * [ ] PolylineZ with M Values
 // * [ ] *-Z encoding with empty M values -- should omit entirely rather than encoding 0's
-// * [ ] PolyLineZ Sample File
+// * [x] PolyLineZ Sample File
