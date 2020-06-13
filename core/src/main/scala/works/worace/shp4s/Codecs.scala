@@ -11,7 +11,30 @@ private object Codecs {
   val nullShape = provide(NullShape)
   val point = (doubleL :: doubleL).as[Point]
   val bbox = (doubleL :: doubleL :: doubleL :: doubleL).as[BBox]
-  private val multiPointZBody = int32L.flatZip { numPoints =>
+
+  val pointZ = (doubleL :: doubleL :: doubleL :: Util.ifAvailable(doubleL, Double.MinValue)).xmap(
+    { case (x :: y :: z :: m :: HNil) => PointZ(x, y, z, m)  },
+    (pz: PointZ) => pz.x :: pz.y :: pz.z :: pz.m :: HNil
+  )
+
+  val multiPoint = (bbox :: int32L.consume(
+    numPoints => vectorOfN(provide(numPoints), Point.codec)
+  )(points => points.size)).as[MultiPoint]
+
+  val multiPointM: Codec[MultiPointM] = (Codecs.bbox :: int32L).flatPrepend { case bbox :: numPoints :: HNil =>
+    vectorOfN(provide(numPoints), Point.codec) :: Util.rangedValues(numPoints)
+  }.xmap( {
+    case ((bbox :: _ :: HNil) :: points :: mVals :: HNil) => {
+      val pointMs = points.zip(mVals.values).map { case (point, m) => PointM(point.x, point.y, m) }
+      MultiPointM(bbox, mVals.range, pointMs)
+    }
+  },
+    (mp: MultiPointM) => {
+      (mp.bbox :: mp.points.size :: HNil) :: mp.points.map(_.pointXY) :: mp.mRangedValues :: HNil
+    }
+  )
+
+  val multiPointZBody = int32L.flatZip { numPoints =>
     vectorOfN(provide(numPoints), point) ::
     Util.rangedValues(numPoints) ::
     // TODO: Not sure using RangedValues.zero is right here -- should be None
@@ -30,30 +53,8 @@ private object Codecs {
 
   val multiPointZ = (bbox :: multiPointZBody).as[MultiPointZ]
 
-  val pointZ = (doubleL :: doubleL :: doubleL :: Util.ifAvailable(doubleL, Double.MinValue)).xmap(
-    { case (x :: y :: z :: m :: HNil) => PointZ(x, y, z, m)  },
-    (pz: PointZ) => pz.x :: pz.y :: pz.z :: pz.m :: HNil
-  )
-
-  val multiPoint = (bbox :: int32L.consume(
-    numPoints => vectorOfN(provide(numPoints), Point.codec)
-  )(points => points.size)).as[MultiPoint]
-
-  private val multiPointMInternal: Codec[MultiPointM] = (Codecs.bbox :: int32L).flatPrepend { case bbox :: numPoints :: HNil =>
-    vectorOfN(provide(numPoints), Point.codec) :: Util.rangedValues(numPoints)
-  }.xmap( {
-    case ((bbox :: _ :: HNil) :: points :: mVals :: HNil) => {
-      val pointMs = points.zip(mVals.values).map { case (point, m) => PointM(point.x, point.y, m) }
-      MultiPointM(bbox, mVals.range, pointMs)
-    }
-  },
-    (mp: MultiPointM) => {
-      (mp.bbox :: mp.points.size :: HNil) :: mp.points.map(_.pointXY) :: mp.mRangedValues :: HNil
-    }
-  )
-
-  private case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
-  private val polyLineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
+  case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
+  val polyLineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
 
   val polyLine: Codec[PolyLine] = polyLineHeader.flatPrepend { h =>
     vectorOfN(provide(h.numParts), int32L).hlist
@@ -102,8 +103,6 @@ private object Codecs {
     pl => PolygonZ(pl.bbox, pl.zRange, pl.mRange, pl.lines),
     poly => PolyLineZ(poly.bbox, poly.zRange, poly.mRange, poly.rings)
   )
-
-  val multiPointM = multiPointMInternal
 
   val shape: Codec[ShapeRecord] = RecordHeader.codec
     .flatPrepend { header =>

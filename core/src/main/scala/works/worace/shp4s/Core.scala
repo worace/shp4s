@@ -13,6 +13,7 @@ import cats.effect.ContextShift
 import java.nio.file.Path
 import shapeless.::
 import scala.util.Try
+import java.nio.file.Paths
 
 trait ShpCodec[T] {
   def codec: Codec[T]
@@ -75,8 +76,16 @@ object Core {
     }
   }
 
+  def streamShapefile(path: String)(implicit cs: ContextShift[IO]): fs2.Stream[IO, Feature] = {
+    streamShapefile(Paths.get(path))
+  }
+
   def readAllSync(path: Path)(implicit cs: ContextShift[IO]): Vector[Feature] = {
     streamShapefile(path).compile.toVector.unsafeRunSync()
+  }
+
+  def readAllSync(path: String)(implicit cs: ContextShift[IO]): Vector[Feature] = {
+    readAllSync(Paths.get(path))
   }
 
   def readHeader(bytes: Array[Byte]): Try[FileHeader] = {
