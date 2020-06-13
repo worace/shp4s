@@ -11,7 +11,7 @@ case class FileHeader(
   zMin: Double, zMax: Double, mMin: Double, mMax: Double
 )
 
-object FileHeader {
+object FileHeader extends ShpCodec[FileHeader] {
   private val fileCode: Codec[Unit] = constant(hex"000270a")
   private val emptyInt: Codec[Unit] = constant(hex"0000000")
   private val version: Codec[Unit] = constant(hex"e8030000")

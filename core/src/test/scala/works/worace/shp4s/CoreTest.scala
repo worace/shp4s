@@ -23,8 +23,8 @@ class CoreTest extends munit.FunSuite {
     test: S => Unit
   ): Unit = {
     val t = for {
-      header <- FileHeader.codec.decode(file.bitvec)
-      recordHeader <- Core.recordHeader.decode(header.remainder)
+      header <- FileHeader.decode(file.bitvec)
+      recordHeader <- RecordHeader.decode(header.remainder)
       discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
       shape <- scodec.codecs
         .fixedSizeBits(recordHeader.value.bitLength, decoder)
@@ -59,7 +59,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("MultiPointZ") {
-    shapeTest(TestFiles.multiPointZ, ShapeType.multiPointZ, ShpCodecs.multiPointZ) { mpz =>
+    shapeTest(TestFiles.multiPointZ, ShapeType.multiPointZ, MultiPointZ.codec) { mpz =>
       val bb = BBox(431478.25, 141891.97, 431478.25, 141891.97)
       assertEquals(mpz.bbox, bb)
       assertEquals(mpz.points.head, Point(431478.25, 141891.97))
@@ -74,7 +74,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("Polyline") {
-    shapeTest(TestFiles.polyLine, ShapeType.polyLine, ShpCodecs.polyLine) { pl =>
+    shapeTest(TestFiles.polyLine, ShapeType.polyLine, Codecs.polyLine) { pl =>
       val bb = BBox(-118.48595907794942, 29.394034927600217, -81.68213083231271, 34.08730621013162)
       assertEquals(pl.bbox, bb)
       assertEquals(pl.lines.head.head, Point(-118.48595907794942, 34.01473938049082))
@@ -89,7 +89,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("Polygon") {
-    shapeTest(TestFiles.polygon, ShapeType.polygon, ShpCodecs.polygon) { shp =>
+    shapeTest(TestFiles.polygon, ShapeType.polygon, Codecs.polygon) { shp =>
       val bbox = shp.bbox
       assertEquals(bbox, BBox(-20.0, -90.0, -10.0, -60.0))
       assertEquals(shp.rings.head.head, Point(-20.0, -60.0))
@@ -104,7 +104,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("MultiPoint") {
-    shapeTest(TestFiles.multiPoint, ShapeType.multiPoint, ShpCodecs.multiPoint) { shp =>
+    shapeTest(TestFiles.multiPoint, ShapeType.multiPoint, Codecs.multiPoint) { shp =>
       val bbox = shp.bbox
       assertEquals(bbox, BBox(-123.0, -20.0, 10.0, 47.5234523))
       assertEquals(shp.points, Vector(Point(10.0, -20.0), Point(-123.0, 47.5234523)))
@@ -129,7 +129,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("PointZ") {
-    shapeTest(TestFiles.pointZ, ShapeType.pointZ, ShpCodecs.pointZ) { shp =>
+    shapeTest(TestFiles.pointZ, ShapeType.pointZ, PointZ.codec) { shp =>
       assertEquals(shp, PointZ(1.0, 2.0, -3.0, None))
     }
   }
@@ -147,7 +147,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("polygonz") {
-    shapeTest(TestFiles.polygonZ, ShapeType.polygonZ, ShpCodecs.polygonZ) { shp =>
+    shapeTest(TestFiles.polygonZ, ShapeType.polygonZ, Codecs.polygonZ) { shp =>
       val bbox = BBox(-0.7965, 5.98180, -0.78958, 5.99236)
       assertBBox(shp.bbox, bbox)
       assertEquals(shp.zRange, Range(156.0, 156.0))

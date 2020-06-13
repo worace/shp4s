@@ -1,5 +1,8 @@
 package works.worace.shp4s
 
+import scodec._
+import scodec.codecs._
+
 private object Util {
   def sliceIndices[_](vec: Vector[Vector[_]]): Vector[(Int, Int)] = {
     var start: Int = 0
@@ -45,4 +48,10 @@ private object Util {
       Vector(points)
     }
   }
+
+  def ifAvailable[A](codec: Codec[A], zero: A): Codec[Option[A]] = {
+    optional(lookahead(codec.unit(zero)), codec)
+  }
+
+  def rangedValues(num: Int) = (doubleL :: doubleL :: vectorOfN(provide(num), doubleL)).as[RangedValues]
 }
