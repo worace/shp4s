@@ -216,6 +216,10 @@ object Core {
               case p: PointZ => Some(p)
               case o                => None
             }(pointZ)
+            .subcaseO(ShapeType.polyLineZ) {
+              case p: PolyLineZ => Some(p)
+              case o                => None
+            }(polyLineZ)
             .subcaseO(ShapeType.polygonZ) {
               case p: PolygonZ => Some(p)
               case o                => None

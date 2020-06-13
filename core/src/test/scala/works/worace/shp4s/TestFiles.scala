@@ -24,4 +24,5 @@ object TestFiles {
   val multiPoint = Resource("multipoint.shp")
   val pointZ = Resource("pointz.shp")
   val polygonZ = Resource("w001n05f.shp")
+  val polyLineZ = Resource("polylinez.shp")
 }

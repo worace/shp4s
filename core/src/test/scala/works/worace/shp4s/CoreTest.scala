@@ -146,44 +146,65 @@ class CoreTest extends munit.FunSuite {
     )
   }
 
-//   test("PolyLineZ") {
-// -    xMin = -0.7965277777777777,
-// -    yMin = 5.981805555555556,
-// -    xMax = -0.7895833333333334,
-// -    yMax = 5.992361111111111
-// +    xMin = -123.0,
-// +    yMin = -20.0,
-// +    xMax = 10.0,
-// +    yMax = 47.5234523
-//    ),
-//    zRange = Range(
-// -    min = 156.0,
-// -    max = 156.0
-// +    min = 0.0,
-// +    max = 0.0
-//    ),
+  test("polygonz") {
+    shapeTest(TestFiles.polygonZ, ShapeType.polygonZ, ShpCodecs.polygonZ) { shp =>
+      val bbox = BBox(-0.7965, 5.98180, -0.78958, 5.99236)
+      assertBBox(shp.bbox, bbox)
+      assertEquals(shp.zRange, Core.Range(156.0, 156.0))
+      assertEquals(shp.mRange, None)
+      assertEquals(shp.rings.size, 1)
 
-  // shapeTest(TestFiles.polyLineZ, ShapeType.polyLineZ, ShpCodecs.polyLineZ) { shp =>
-    // val hTpz = Core.readHeader(TestFiles.polyLineZ.bytes)
-    // println(hTpz.map(_.shapeType))
-
-  //   // assertEquals(shp, PolyLineZ(bbox, Range(0.0, 0.0), None, lines))
-  // }
+      val points = shp.rings.flatten.take(3)
+      assertEquals(
+        points,
+        Vector(
+          PointZ(-0.7954166666666667, 5.992083333333333, 156.0, None),
+          PointZ(-0.7954166666666667, 5.992361111111111, 156.0, None),
+          PointZ(-0.795138888888889, 5.992361111111111, 156.0, None)
+        )
+      )
+    }
+  }
 
   test("PolygonZ File") {
     val pzs = Core.readAllSync(TestFiles.polygonZ.path)
     assertEquals(pzs.size, 16)
-    val pz1 = pzs.head.shape
-    val bbox = BBox(-0.7965, 5.98180, -0.78958, 5.99236)
-  //   val lines = Vector(Vector(PointZ(1.0, 2.0, -3.0, None)))
-  //   // println(shp)
-    assertBBox(pz1.bbox, bbox)
-    // assertEquals(
-    //   PolygonZ(),
-    //   Vector(
-    //     PointZ(1.0, 2.0, -3.0, None),
-    //     PointZ(180.0, -22.0, 34.0, None)
-    //   )
-    // )
+    val ranges = pzs.map(_.shape.asInstanceOf[PolygonZ].zRange).toSet
+    assert(ranges.contains(Range(19.0, 19.0)))
+  }
+
+  test("polylinez") {
+    val shps = Core.readAllSync(TestFiles.polyLineZ.path)
+    val plzs = shps.map(_.shape.asInstanceOf[PolyLineZ])
+    assertEquals(plzs.size, 3)
+    assertEquals(plzs.map(_.lines.size), Vector(1, 1, 2))
+
+    val exp = Vector(
+      PolyLineZ(
+        BBox(1.0, 2.0, 2.0, 3.0),
+        Range(-4.0, -3.0),
+        None,
+        Vector(Vector(PointZ(1.0, 2.0, -3.0, None), PointZ(2.0, 3.0, -4.0, None)))
+      ),
+      PolyLineZ(
+        BBox(179, -22, 180, -18),
+        Range(32, 34),
+        None,
+        Vector(
+          Vector(PointZ(180, -22, 34, None), PointZ(179, -18, 32, None))
+        )
+      ),
+      PolyLineZ(
+        BBox(1, -22, 180, 3),
+        Range(-4, 34),
+        None,
+        Vector(
+          Vector(PointZ(1.0, 2.0, -3.0, None), PointZ(2.0, 3.0, -4.0, None)),
+          Vector(PointZ(180, -22, 34, None), PointZ(179, -18, 32, None))
+        )
+      )
+    )
+
+    assertEquals(plzs, exp)
   }
 }
