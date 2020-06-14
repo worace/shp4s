@@ -22,6 +22,7 @@ case class PolyLine(bbox: BBox, lines: Vector[Vector[Point]]) extends Shape {
 }
 case class Polygon(bbox: BBox, rings: Vector[Vector[Point]]) extends Shape
 case class PolyLineZ(bbox: BBox, zRange: Range, mRange: Option[Range], lines: Vector[Vector[PointZ]]) extends Shape
+case class PolyLineM(bbox: BBox, mRange: Range, lines: Vector[Vector[PointM]]) extends Shape
 case class PolygonZ(bbox: BBox, zRange: Range, mRange: Option[Range], rings: Vector[Vector[PointZ]]) extends Shape
 
 object NullShapeCodec extends ShpCodec[NullShape.type] {

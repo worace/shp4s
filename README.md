@@ -18,7 +18,7 @@ Types - 14
 * [x] PolygonZ
 * [X] MultiPointZ
 * [x] PointM
-* [ ] PolyLineM
+* [x] PolyLineM
 * [ ] PolygonM
 * [x] MultiPointM
 * [ ] MultiPatch

@@ -24,6 +24,11 @@ private object Util {
     }
   }
 
+  def ringRangedValues[P](range: Range, rings: Vector[Vector[P]])(getter: P => Double): RangedValues = {
+    val values = rings.flatMap(ring => ring.map(p => getter(p)))
+    RangedValues(range.min, range.max, values)
+  }
+
   def pointZRingsZValues(range: Range, rings: Vector[Vector[PointZ]]): RangedValues = {
     val zVals = rings.flatMap(line => line.map(_.z))
     RangedValues(range.min, range.max, zVals)

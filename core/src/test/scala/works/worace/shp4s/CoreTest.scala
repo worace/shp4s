@@ -146,7 +146,7 @@ class CoreTest extends munit.FunSuite {
     )
   }
 
-  test("PointZ with M".only) {
+  test("PointZ with M") {
     val pzs = Core.readAllSync(TestFiles.pointZM.path)
     assertEquals(2, pzs.size)
     val exp = Vector(
@@ -162,6 +162,24 @@ class CoreTest extends munit.FunSuite {
       )
     )
     assertEquals(pzs, exp)
+  }
+
+  test("PointM") {
+    val pms = Core.readAllSync(TestFiles.pointM.path)
+    assertEquals(2, pms.size)
+    val exp = Vector(
+      Feature(
+        1,
+        PointM(-118.13297289981072, 33.85510295853156, 123.0),
+        Map("id" -> DBFNumeric(1), "test" -> DBFString("asdf"))
+      ),
+      Feature(
+        2,
+        PointM(-118.1324465853103, 33.85394911703719, 456.0),
+        Map("id" -> DBFNumeric(2), "test" -> DBFString("zxcb"))
+      )
+    )
+    assertEquals(pms, exp)
   }
 
   test("polygonz") {
@@ -224,5 +242,27 @@ class CoreTest extends munit.FunSuite {
     )
 
     assertEquals(plzs, exp)
+  }
+
+  test("polylinem".only) {
+    val shps = Core.readAllSync(TestFiles.polyLineM.path)
+    val exp = Vector(
+      Feature(
+        1,
+        PolyLineM(
+          BBox(-118.1334591590923, 33.854545353375826, -118.13280124313243, 33.85519298939882),
+          Range(1.0, 3.0),
+          Vector(
+            Vector(
+              PointM(-118.1334591590923, 33.85519298939882, 1.0),
+              PointM(-118.13280124313243, 33.85485889145045, 2.0),
+              PointM(-118.1328526428168, 33.854545353375826, 3.0)
+            )
+          )
+        ),
+        Map("id" -> DBFNumeric(1), "test" -> DBFString("pizza"))
+      )
+    )
+    assertEquals(shps, exp)
   }
 }

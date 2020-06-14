@@ -81,6 +81,22 @@ private object Codecs {
     (p: PointM) => p.x :: p.y :: p.m :: HNil
   )
 
+  val polyLineM = polyLine.flatPrepend { pl =>
+    Util.rangedValues(pl.numPoints).hlist
+  }.xmap(
+    { case pl :: mVals :: HNil => {
+      val pointMs = Util.zippedWithFlatVec(pl.lines, mVals.values) { (point, m) =>
+        PointM(point.x, point.y, m)
+      }
+      PolyLineM(pl.bbox, mVals.range, pointMs)
+    } },
+    (pl: PolyLineM) => {
+      val pointsXY = pl.lines.map(line => line.map(p => Point(p.x, p.y)))
+      val mVals = Util.ringRangedValues(pl.mRange, pl.lines) { p => p.m }
+      PolyLine(pl.bbox, pointsXY) :: mVals :: HNil
+    }
+  )
+
   // Codec for polylineZ based on reading polyline and then handling the trailing z/m values
   val polyLineZ = polyLine.flatPrepend { pl =>
     Util.rangedValues(pl.numPoints) :: Util.ifAvailable(Util.rangedValues(pl.numPoints), RangedValues.zero)
@@ -150,6 +166,10 @@ private object Codecs {
             case p: PointM => Some(p)
             case o         => None
           }(Codecs.pointM)
+          .subcaseO(ShapeType.polyLineM) {
+            case s: PolyLineM => Some(s)
+            case o              => None
+          }(Codecs.polyLineM)
           .subcaseO(ShapeType.multiPointM) {
             case s: MultiPointM => Some(s)
             case o              => None
