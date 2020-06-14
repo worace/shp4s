@@ -26,7 +26,7 @@ Types - 14
 * [ ] DBF proper resource handling (cats bracket? closing in finally?)
 
 TODO Edge Cases
-* [ ] Verify PointZ file with M values
+* [x] Verify PointZ file with M values
 * [ ] Verify MultiPointZ with M values
 * [ ] Convert MultiPointZ to hold Vector[PointZ] values
 * [ ] PolylineZ with M Values

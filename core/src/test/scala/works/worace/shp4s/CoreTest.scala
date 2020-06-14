@@ -146,6 +146,24 @@ class CoreTest extends munit.FunSuite {
     )
   }
 
+  test("PointZ with M".only) {
+    val pzs = Core.readAllSync(TestFiles.pointZM.path)
+    assertEquals(2, pzs.size)
+    val exp = Vector(
+      Feature(
+        1,
+        PointZ(-118.13245921166909, 33.855167385820714, 15.0, Some(22.0)),
+        Map("id" -> DBFNumeric(1), "example" -> DBFString("pizza"))
+      ),
+      Feature(
+        2,
+        PointZ(-118.13236902128844, 33.85485540853966, 12.0, Some(3.0)),
+        Map("id" -> DBFNumeric(2), "example" -> DBFString("calzone"))
+      )
+    )
+    assertEquals(pzs, exp)
+  }
+
   test("polygonz") {
     shapeTest(TestFiles.polygonZ, ShapeType.polygonZ, Codecs.polygonZ) { shp =>
       val bbox = BBox(-0.7965, 5.98180, -0.78958, 5.99236)
