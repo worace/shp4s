@@ -106,11 +106,16 @@ private object Codecs {
   val polyLineZ = polyLine.flatPrepend { pl =>
     Util.rangedValues(pl.numPoints) :: Util.ifAvailable(Util.rangedValues(pl.numPoints), RangedValues.zero)
   }.xmap(
-    { case pl :: zVals :: mVals :: HNil => {
-      val pointZs = Util.zippedWithFlatVec(pl.lines, zVals.values) { (point, z) =>
-        PointZ(point.x, point.y, z, None)
+    { case pl :: zRanged :: mRanged :: HNil => {
+      println("decode polylinez with z and m vals")
+      println(zRanged)
+      println(mRanged)
+      val zs = zRanged.values
+      val ms = mRanged.map(_.values).getOrElse(Vector())
+      val pointZs = Util.zippedWithFlatVecTriple(pl.lines, zs, ms) { (point, z, m) =>
+        PointZ(point.x, point.y, z.getOrElse(0.0), m)
       }
-      PolyLineZ(pl.bbox, zVals.range, mVals.map(_.range), pointZs)
+      PolyLineZ(pl.bbox, zRanged.range, mRanged.map(_.range), pointZs)
     } },
     (plz: PolyLineZ) => {
       val pointsXY = plz.lines.map(line => line.map(p => Point(p.x, p.y)))

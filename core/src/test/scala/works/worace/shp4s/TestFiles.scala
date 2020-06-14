@@ -30,6 +30,7 @@ object TestFiles {
   val pointM = Resource("pointm.shp")
   val polyLineM = Resource("polylinem.shp")
   val polygonM = Resource("polygonm.shp")
+  val polygonZM = Resource("polygonzm.shp")
 
   val polygonMContents = Vector(
     Feature(

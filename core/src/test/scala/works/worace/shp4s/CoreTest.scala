@@ -244,7 +244,42 @@ class CoreTest extends munit.FunSuite {
     assertEquals(plzs, exp)
   }
 
-  test("polylinem".only) {
+  test("polylinezm") {
+    val shps = Core.readAllSync(TestFiles.polyLineZM.path)
+    val plzs = shps.map(_.shape.asInstanceOf[PolyLineZ])
+    assertEquals(plzs.size, 2)
+    assertEquals(plzs.map(_.lines.size), Vector(1, 1))
+    println(plzs)
+
+    // assertEquals(
+    //   plzs.head,
+    //   PolyLineZ(
+    //     BBox(-118.13287778194581, 33.854995941064594, -118.13240135260568, 33.85529153591066),
+    //     Range(0, 0),
+    //     Some(Range(0,0)),
+    //     Vector(Vector(PointZ(1.0, 2.0, -3.0, None), PointZ(2.0, 3.0, -4.0, None)))
+    //   )
+    // )
+
+    // val exp = Vector(
+    //   PolyLineZ(
+    //     BBox(-118.13287778194581, 33.854995941064594, -118.13240135260568, 33.85529153591066),
+    //     Range(-4.0, -3.0),
+    //     None,
+    //     Vector(Vector(PointZ(1.0, 2.0, -3.0, None), PointZ(2.0, 3.0, -4.0, None)))
+    //   ),
+    //   PolyLineZ(
+    //     BBox(179, -22, 180, -18),
+    //     Range(32, 34),
+    //     None,
+    //     Vector(
+    //       Vector(PointZ(180, -22, 34, None), PointZ(179, -18, 32, None))
+    //     )
+    //   )
+    // )
+
+    // assertEquals(plzs, exp)
+  }
 
   test("polylinem") {
     val shps = Core.readAllSync(TestFiles.polyLineM.path)
@@ -268,8 +303,64 @@ class CoreTest extends munit.FunSuite {
     assertEquals(shps, exp)
   }
 
-  test("polygonm".only) {
+  test("polygonm") {
     val shps = Core.readAllSync(TestFiles.polygonM.path)
     assertEquals(shps, TestFiles.polygonMContents)
+  }
+
+  test("polygonzm".only) {
+    import scodec._
+    import scodec.bits._
+    import scodec.codecs._
+    import shapeless.HNil
+    import shapeless.::
+    import scodec.stream._
+    val file = TestFiles.polygonZM
+
+    val t = for {
+      header <- FileHeader.decode(file.bitvec)
+      recordHeader <- RecordHeader.decode(header.remainder)
+      discriminator <- scodec.codecs.int32L.decode(recordHeader.remainder)
+      plheader <- Codecs.polyLineHeader.decode(discriminator.remainder)
+      parts <- vectorOfN(provide(1), int32L).decode(plheader.remainder)
+      points <- vectorOfN(provide(5), Point.codec).decode(parts.remainder)
+      zVals <- Util.rangedValues(5).decode(points.remainder)
+      mVals <- Util.rangedValues(5).decode(zVals.remainder)
+      // shape <- scodec.codecs
+      //   .fixedSizeBits(recordHeader.value.bitLength, Codecs.polygonZ)
+      //   .decode(discriminator.remainder)
+    } yield {
+      println(discriminator)
+      println(plheader)
+      println(s"parts $parts \n\n")
+      println(s"points $points \n\n")
+      println(s"zvals: $zVals \n\n")
+      println(s"mvals: $mVals \n\n")
+    }
+    t.toOption.getOrElse(this.fail(s"Expected succesful decoder. Got $t"))
+
+    val shps = Core.readAllSync(TestFiles.polygonZM.path)
+    println(shps)
+    val exp = Vector(
+      Feature(
+        1,
+        PolygonZ(
+          BBox(-118.13306035523306, 33.85514373848763, -118.1326517388282, 33.85539412471017),
+          Range(1.0, 4.0),
+          Some(Range(5.0, 8.0)),
+          Vector(
+            Vector(
+              PointZ(-118.13306035523306, 33.85531587901563, 4.0, Some(7.0)),
+              PointZ(-118.13295602764032, 33.85539412471017, 1.0, Some(5.0)),
+              PointZ(-118.1326517388282, 33.85529153591066, 2.0, Some(6.0)),
+              PointZ(-118.13300123626384, 33.85514373848763, 3.0, Some(8.0)),
+              PointZ(-118.13306035523306, 33.85531587901563, 4.0, Some(7.0))
+            )
+          )
+        ),
+        Map("id" -> DBFNumeric(1))
+      )
+    )
+    assertEquals(shps, exp)
   }
 }
