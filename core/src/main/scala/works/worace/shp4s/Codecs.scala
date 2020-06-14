@@ -107,9 +107,6 @@ private object Codecs {
     Util.rangedValues(pl.numPoints) :: Util.ifAvailable(Util.rangedValues(pl.numPoints), RangedValues.zero)
   }.xmap(
     { case pl :: zRanged :: mRanged :: HNil => {
-      println("decode polylinez with z and m vals")
-      println(zRanged)
-      println(mRanged)
       val zs = zRanged.values
       val ms = mRanged.map(_.values).getOrElse(Vector())
       val pointZs = Util.zippedWithFlatVecTriple(pl.lines, zs, ms) { (point, z, m) =>

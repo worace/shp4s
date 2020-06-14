@@ -31,41 +31,4 @@ object TestFiles {
   val polyLineM = Resource("polylinem.shp")
   val polygonM = Resource("polygonm.shp")
   val polygonZM = Resource("polygonzm.shp")
-
-  val polygonMContents = Vector(
-    Feature(
-      1,
-      PolygonM(
-        BBox(-118.1331320008404, 33.85400749666561, -118.13211202890042, 33.85515572855014),
-        Range(5.0, 8.0),
-        Vector(
-          Vector(
-            PointM(-118.1331320008404, 33.85497860767433, 5.0),
-            PointM(-118.1327838667052, 33.85515572855014, 8.0),
-            PointM(-118.13211202890042, 33.85453885929302, 7.0),
-            PointM(-118.13306481705992, 33.85400749666561, 6.0),
-            PointM(-118.1331320008404, 33.85497860767433, 5.0)
-          )
-        )
-      ),
-      Map("id" -> DBFNumeric(1), "test" -> DBFString("asdf"))
-    ),
-    Feature(
-      2,
-      PolygonM(
-        BBox(-118.13351678067404, 33.8557726533132, -118.13267993607637, 33.85629785281825),
-        Range(1.0, 4.0),
-        Vector(
-          Vector(
-            PointM(-118.13351678067404, 33.85629785281825, 1.0),
-            PointM(-118.13267993607637, 33.85599995063705, 4.0),
-            PointM(-118.1329210089956, 33.8557726533132, 3.0),
-            PointM(-118.13324804555214, 33.8559069653682, 2.0),
-            PointM(-118.13351678067404, 33.85629785281825, 1.0)
-          )
-        )
-      ),
-      Map("id" -> DBFNumeric(2), "test" -> DBFString("qwer"))
-    )
-  )
 }
