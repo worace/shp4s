@@ -245,6 +245,8 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("polylinem".only) {
+
+  test("polylinem") {
     val shps = Core.readAllSync(TestFiles.polyLineM.path)
     val exp = Vector(
       Feature(
@@ -264,5 +266,10 @@ class CoreTest extends munit.FunSuite {
       )
     )
     assertEquals(shps, exp)
+  }
+
+  test("polygonm".only) {
+    val shps = Core.readAllSync(TestFiles.polygonM.path)
+    assertEquals(shps, TestFiles.polygonMContents)
   }
 }

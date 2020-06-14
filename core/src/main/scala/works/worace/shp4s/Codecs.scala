@@ -97,6 +97,11 @@ private object Codecs {
     }
   )
 
+  val polygonM: Codec[PolygonM] = polyLineM.xmap(
+    pl => PolygonM(pl.bbox, pl.mRange, pl.lines),
+    poly => PolyLineM(poly.bbox, poly.mRange, poly.rings)
+  )
+
   // Codec for polylineZ based on reading polyline and then handling the trailing z/m values
   val polyLineZ = polyLine.flatPrepend { pl =>
     Util.rangedValues(pl.numPoints) :: Util.ifAvailable(Util.rangedValues(pl.numPoints), RangedValues.zero)
@@ -170,6 +175,10 @@ private object Codecs {
             case s: PolyLineM => Some(s)
             case o              => None
           }(Codecs.polyLineM)
+          .subcaseO(ShapeType.polygonM) {
+            case s: PolygonM => Some(s)
+            case o              => None
+          }(Codecs.polygonM)
           .subcaseO(ShapeType.multiPointM) {
             case s: MultiPointM => Some(s)
             case o              => None

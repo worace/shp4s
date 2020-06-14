@@ -19,7 +19,7 @@ Types - 14
 * [X] MultiPointZ
 * [x] PointM
 * [x] PolyLineM
-* [ ] PolygonM
+* [x] PolygonM
 * [x] MultiPointM
 * [ ] MultiPatch
 * [X] DBF

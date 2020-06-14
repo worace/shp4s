@@ -52,6 +52,7 @@ object ShapeType {
   val multiPointZ = 18
   val pointM = 21
   val polyLineM = 23
+  val polygonM = 25
   val multiPointM = 28
 }
 
