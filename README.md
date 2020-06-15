@@ -29,6 +29,6 @@ TODO Edge Cases
 * [x] Verify PointZ file with M values
 * [ ] Verify MultiPointZ with M values
 * [ ] Convert MultiPointZ to hold Vector[PointZ] values
-* [ ] PolylineZ with M Values
+* [x] PolylineZ with M Values
 * [ ] *-Z encoding with empty M values -- should omit entirely rather than encoding 0's
 * [x] PolyLineZ Sample File
