@@ -2,7 +2,7 @@ package works.worace.shp4s
 
 class DBFTest extends munit.FunSuite {
   test("DBF") {
-    val rows = new DBFIterator(TestFiles.dbf.path).toVector
+    val rows = DBFIterator(TestFiles.dbf.path).toVector
     assertEquals(rows.size, 10)
     val rowOne = Map(
       "name" -> DBFString("New Swabia (historic)"),

@@ -1,6 +1,5 @@
 import xerial.sbt.Sonatype._
 
-
 ThisBuild / scalaVersion := "2.13.1"
 
 val commonSettings = Seq(
