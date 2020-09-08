@@ -59,23 +59,33 @@ object ShapeType {
 case class ShapeRecord(header: RecordHeader, shape: Shape)
 
 object Core {
+  type Props = Map[String, DBFValue]
   val HEADER_SIZE = 100
-  def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, Feature] = {
-    val dbfPath = path.resolveSibling(path.getFileName.toString.replace(".shp", ".dbf"))
-    val dbfReader = new DBFIterator(dbfPath)
-
-    val props = fs2.Stream.fromIterator[IO](dbfReader)
-    val shapes = fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
-      fs2.io.file
-        .readAll[IO](path, blocker, 4096)
-        .drop(HEADER_SIZE)
-        .through(Codecs.shpStream.toPipeByte)
-    }
-
+  def featureStream(
+    shapes: fs2.Stream[IO, ShapeRecord],
+    props: fs2.Stream[IO, Map[String, DBFValue]]
+  ): fs2.Stream[IO, Feature] = {
     shapes.zip(props).map {
       case (shape, props) =>
         Feature(shape.header.recordNumber, shape.shape, props)
     }
+  }
+
+  def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, Feature] = {
+    val dbfPath = path.resolveSibling(path.getFileName.toString.replace(".shp", ".dbf"))
+    val props = DBFIterator(dbfPath).stream
+    val shapes = fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
+      streamShapeRecords(fs2.io.file.readAll[IO](path, blocker, 4096))
+    }
+
+    featureStream(shapes, props)
+
+  }
+
+  def streamShapeRecords(shpStream: fs2.Stream[IO, Byte]): fs2.Stream[IO, ShapeRecord] = {
+    shpStream
+      .drop(HEADER_SIZE)
+      .through(Codecs.shpStream.toPipeByte)
   }
 
   def streamShapefile(path: String)(implicit cs: ContextShift[IO]): fs2.Stream[IO, Feature] = {

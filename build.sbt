@@ -8,6 +8,7 @@ val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.scalameta" %% "munit" % "0.7.1" % Test
   ),
+  version := "0.0.1",
   crossScalaVersions := Seq("2.12.11", "2.13.1"),
   scalaVersion := "2.13.1",
   testFrameworks += new TestFramework("munit.Framework"),
@@ -64,5 +65,17 @@ lazy val docs = project
   .settings(
     mdocVariables := Map(
       "VERSION" -> version.value
+    )
+  )
+
+lazy val examples = project
+  .dependsOn(core)
+  .settings(commonSettings: _*)
+  .settings(
+    name := "shp4s-examples"
+  )
+  .settings(
+    libraryDependencies ++= Seq(
+      "com.lendup.fs2-blobstore" %% "gcs" % "0.6.0"
     )
   )
