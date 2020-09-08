@@ -66,7 +66,7 @@ private object Util {
 
   def offsetSlices[T](points: Vector[T], offsets: Vector[Int]): Vector[Vector[T]] = {
     if (offsets.size > 1) {
-      val slices = offsets.appended(points.size)
+      val slices = offsets ++ Vector(points.size)
 
       slices
         .sliding(2)

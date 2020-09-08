@@ -66,7 +66,7 @@ private object Codecs {
     (pl: PolyLine) => {
       val points = pl.lines.flatten
       val numPoints = points.size
-      val offsets = pl.lines.map(_.size - 1).prepended(0)
+      val offsets = Vector(0) ++ pl.lines.map(_.size - 1)
       val header = PolyLineHeader(pl.bbox, pl.lines.size, numPoints)
       (header :: offsets :: HNil) :: points :: HNil
     }
