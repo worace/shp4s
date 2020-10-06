@@ -8,7 +8,6 @@ val commonSettings = Seq(
   libraryDependencies ++= Seq(
     "org.scalameta" %% "munit" % "0.7.1" % Test
   ),
-  version := "0.0.1",
   crossScalaVersions := Seq("2.12.11", "2.13.1"),
   scalaVersion := "2.13.1",
   testFrameworks += new TestFramework("munit.Framework"),
