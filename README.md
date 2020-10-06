@@ -1,11 +1,20 @@
-# shp4s
+# shp4s - Pure Scala Shapefile Codec
 
-TK
+Based on scodec and fs2.
 
-Polygon -- same as polyline
-bbox
-numparts (int) == num rings
-numpoints (int)
+```scala
+import cats.effect.{IO, ContextShift}
+import works.worace.shp4s
+
+implicit val csIO: ContextShift[IO] =
+  IO.contextShift(scala.concurrent.ExecutionContext.Implicits.global)
+
+// Read features into Vector
+shp4s.Core.readAllSync("test.shp")
+
+// fs2.Stream[IO, Feature]
+streamShapefile(path: String)
+```
 
 Types - 14
 * [X] NullShape
