@@ -24,7 +24,7 @@ class UtilTest extends munit.FunSuite {
     )
   }
 
-  test("sliceIndices".only) {
+  test("sliceIndices") {
     assertEquals(Util.sliceIndices(Vector()), Vector())
     assertEquals(Util.sliceIndices(Vector(Vector(1))), Vector((0, 1)))
     assertEquals(Util.sliceIndices(Vector(Vector(1, 2, 3))), Vector((0, 3)))
