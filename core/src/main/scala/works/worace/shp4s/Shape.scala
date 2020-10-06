@@ -21,9 +21,15 @@ case class PolyLine(bbox: BBox, lines: Vector[Vector[Point]]) extends Shape {
   def numPoints: Int = lines.map(_.size).sum
 }
 case class Polygon(bbox: BBox, rings: Vector[Vector[Point]]) extends Shape
-case class PolyLineZ(bbox: BBox, zRange: Range, mRange: Option[Range], lines: Vector[Vector[PointZ]]) extends Shape
+case class PolyLineZ(
+  bbox: BBox,
+  zRange: Range,
+  mRange: Option[Range],
+  lines: Vector[Vector[PointZ]]
+) extends Shape
 case class PolyLineM(bbox: BBox, mRange: Range, lines: Vector[Vector[PointM]]) extends Shape
-case class PolygonZ(bbox: BBox, zRange: Range, mRange: Option[Range], rings: Vector[Vector[PointZ]]) extends Shape
+case class PolygonZ(bbox: BBox, zRange: Range, mRange: Option[Range], rings: Vector[Vector[PointZ]])
+    extends Shape
 case class PolygonM(bbox: BBox, mRange: Range, rings: Vector[Vector[PointM]]) extends Shape
 
 object NullShapeCodec extends ShpCodec[NullShape.type] {
@@ -35,7 +41,7 @@ object Point extends ShpCodec[Point] {
 }
 
 object PointZ extends ShpCodec[PointZ] {
-  val MIN_SHP_DOUBLE: Double = -1.0E38
+  val MIN_SHP_DOUBLE: Double = -1.0e38
   def apply(x: Double, y: Double, z: Double, m: Double): PointZ = {
     PointZ(x, y, z, Some(m).filter(_ > MIN_SHP_DOUBLE))
   }

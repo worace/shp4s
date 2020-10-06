@@ -29,14 +29,14 @@ class DBFIterator(is: InputStream) extends Iterator[Map[String, DBFValue]] {
 
   private def readDBFField(row: DBFRow, field: DBFField): DBFValue = {
     field.getType match {
-      case DBFDataType.CHARACTER => DBFString(row.getString(field.getName))
-      case DBFDataType.LONG => DBFLong(row.getLong(field.getName))
-      case DBFDataType.DATE => DBFDate(row.getDate(field.getName))
+      case DBFDataType.CHARACTER      => DBFString(row.getString(field.getName))
+      case DBFDataType.LONG           => DBFLong(row.getLong(field.getName))
+      case DBFDataType.DATE           => DBFDate(row.getDate(field.getName))
       case DBFDataType.FLOATING_POINT => DBFFloat(row.getBigDecimal(field.getName))
-      case DBFDataType.NUMERIC => DBFNumeric(row.getBigDecimal(field.getName))
-      case DBFDataType.LOGICAL => DBFLogical(row.getBoolean(field.getName))
-      case DBFDataType.VARCHAR => DBFString(row.getString(field.getName))
-      case _ => DBFString("")
+      case DBFDataType.NUMERIC        => DBFNumeric(row.getBigDecimal(field.getName))
+      case DBFDataType.LOGICAL        => DBFLogical(row.getBoolean(field.getName))
+      case DBFDataType.VARCHAR        => DBFString(row.getString(field.getName))
+      case _                          => DBFString("")
     }
   }
 
