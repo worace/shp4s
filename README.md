@@ -41,3 +41,9 @@ TODO Edge Cases
 * [x] PolylineZ with M Values
 * [ ] *-Z encoding with empty M values -- should omit entirely rather than encoding 0's
 * [x] PolyLineZ Sample File
+
+## Releasing
+
+* no `version` setting in build.sbt
+* push a git tag (e.g. `v0.0.1`) to release a version
+* other commits to master will be pushed as snapshots
