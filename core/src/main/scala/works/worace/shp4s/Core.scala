@@ -8,12 +8,11 @@ import shapeless.HNil
 import scodec.stream._
 import cats.effect.IO
 import scala.collection.immutable.{Stream => _, _}
-import cats.effect.Blocker
-import cats.effect.ContextShift
 import java.nio.file.Path
 import shapeless.::
 import scala.util.Try
 import java.nio.file.Paths
+import fs2.io.file.Files
 
 trait ShpCodec[T] {
   def codec: Codec[T]
@@ -71,15 +70,12 @@ object Core {
     }
   }
 
-  def streamShapefile(path: Path)(implicit cs: ContextShift[IO]): fs2.Stream[IO, Feature] = {
+  def streamShapefile(path: Path): fs2.Stream[IO, Feature] = {
     val dbfPath = path.resolveSibling(path.getFileName.toString.replace(".shp", ".dbf"))
     val props = DBFIterator(dbfPath).stream
-    val shapes = fs2.Stream.resource(Blocker[IO]).flatMap { blocker =>
-      streamShapeRecords(fs2.io.file.readAll[IO](path, blocker, 4096))
-    }
+    val shapes = streamShapeRecords(Files[IO].readAll(fs2.io.file.Path.fromNioPath(path)))
 
     featureStream(shapes, props)
-
   }
 
   def streamShapeRecords(shpStream: fs2.Stream[IO, Byte]): fs2.Stream[IO, ShapeRecord] = {
@@ -88,15 +84,15 @@ object Core {
       .through(Codecs.shpStream.toPipeByte)
   }
 
-  def streamShapefile(path: String)(implicit cs: ContextShift[IO]): fs2.Stream[IO, Feature] = {
+  def streamShapefile(path: String): fs2.Stream[IO, Feature] = {
     streamShapefile(Paths.get(path))
   }
 
-  def readAllSync(path: Path)(implicit cs: ContextShift[IO]): Vector[Feature] = {
+  def readAllSync(path: Path)(implicit runtime: cats.effect.unsafe.IORuntime): Vector[Feature] = {
     streamShapefile(path).compile.toVector.unsafeRunSync()
   }
 
-  def readAllSync(path: String)(implicit cs: ContextShift[IO]): Vector[Feature] = {
+  def readAllSync(path: String)(implicit runtime: cats.effect.unsafe.IORuntime): Vector[Feature] = {
     readAllSync(Paths.get(path))
   }
 

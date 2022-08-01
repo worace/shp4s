@@ -3,11 +3,8 @@
 Based on scodec and fs2.
 
 ```scala
-import cats.effect.{IO, ContextShift}
 import works.worace.shp4s
-
-implicit val csIO: ContextShift[IO] =
-  IO.contextShift(scala.concurrent.ExecutionContext.Implicits.global)
+import cats.effect.unsafe.implicits.global
 
 // Read features into Vector
 shp4s.Core.readAllSync("test.shp")

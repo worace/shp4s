@@ -41,7 +41,7 @@ class DBFIterator(is: InputStream) extends Iterator[Map[String, DBFValue]] {
   }
 
   def stream: fs2.Stream[IO, Map[String, DBFValue]] = {
-    fs2.Stream.fromIterator[IO](this)
+    fs2.Stream.fromIterator[IO](this, 16)
   }
 
   def next(): Map[String, DBFValue] = {
