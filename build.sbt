@@ -21,7 +21,14 @@ val commonSettings = Seq(
       "horace@worace.works",
       url("https://worace.works")
     )
-  )
+  ),
+  pomIncludeRepository := { _ => false },
+  publishTo := {
+    val nexus = "https://oss.sonatype.org/"
+    if (isSnapshot.value) Some("snapshots" at nexus + "content/repositories/snapshots")
+    else Some("releases" at nexus + "service/local/staging/deploy/maven2")
+  },
+  publishMavenStyle := true
 )
 
 lazy val root = Project(
@@ -39,7 +46,15 @@ lazy val root = Project(
     ScalaUnidoc / siteSubdirName  := "api",
     addMappingsToSiteDir(ScalaUnidoc / packageDoc / mappings, ScalaUnidoc / siteSubdirName),
     git.remoteRepo := "git@github.com:worace/shp4s.git",
-    ghpagesNoJekyll := true
+    ghpagesNoJekyll := true,
+    credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials"),
+    credentials += Credentials(
+      "GnuPG Key ID",
+      "gpg",
+      "37169035A8BEDF1EC943E79308109B5E42E0C41D", // key identifier
+      "ignored" // this field is ignored; passwords are supplied by pinentry
+    ),
+    usePgpKeyHex("37169035A8BEDF1EC943E79308109B5E42E0C41D")
   )
 
 lazy val core = project
