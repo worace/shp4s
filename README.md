@@ -41,6 +41,11 @@ TODO Edge Cases
 
 ## Releasing
 
-* no `version` setting in build.sbt
-* push a git tag (e.g. `v0.0.1`) to release a version
-* other commits to master will be pushed as snapshots
+* Set version in `build.sbt` to next non-SNAPSHOT
+* Make sure GPG and sonatype credentials are available -- `~/.sbt/sonatype_credentials`, `$PGP_PASSPHRASE`, and appropriate key as specified in `build.sbt`
+* Run `sbt +publishSigned`
+* Open sonatype staging repository: https://oss.sonatype.org/#stagingRepositories and complete the release
+  * Check contents (should have a 2.13 and 2.12 version for each module)
+  * "close" the release, then "release" using sonatype UI options
+* Run `git tag vX.Y.Z` and push the tag
+* Set version to `-SNAPSHOT` for _next_ version, commit, and push
