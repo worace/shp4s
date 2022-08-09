@@ -35,9 +35,9 @@ lazy val root = Project(
   .enablePlugins(ScalaUnidocPlugin)
   .settings(
     name := "shp4s",
-    excludeFilter in ghpagesCleanSite := "CNAME",
-    siteSubdirName in ScalaUnidoc := "api",
-    addMappingsToSiteDir(mappings in (ScalaUnidoc, packageDoc), siteSubdirName in ScalaUnidoc),
+    ghpagesCleanSite / excludeFilter := "CNAME",
+    ScalaUnidoc / siteSubdirName  := "api",
+    addMappingsToSiteDir(ScalaUnidoc / packageDoc / mappings, ScalaUnidoc / siteSubdirName),
     git.remoteRepo := "git@github.com:worace/shp4s.git",
     ghpagesNoJekyll := true
   )
