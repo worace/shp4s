@@ -1,5 +1,3 @@
-import xerial.sbt.Sonatype._
-
 ThisBuild / scalaVersion := "2.13.1"
 
 val commonSettings = Seq(
@@ -13,7 +11,6 @@ val commonSettings = Seq(
   testFrameworks += new TestFramework("munit.Framework"),
   scalacOptions ++= Seq("-Xfatal-warnings", "-feature", "-deprecation"),
   licenses := Seq("APL2" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
-  sonatypeProjectHosting := Some(GitHubHosting("worace", "shp4s", "horace@worace.works")),
   developers := List(
     Developer(
       "worace",
@@ -48,12 +45,6 @@ lazy val root = Project(
     git.remoteRepo := "git@github.com:worace/shp4s.git",
     ghpagesNoJekyll := true,
     credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials"),
-    credentials += Credentials(
-      "GnuPG Key ID",
-      "gpg",
-      "37169035A8BEDF1EC943E79308109B5E42E0C41D", // key identifier
-      "ignored" // this field is ignored; passwords are supplied by pinentry
-    ),
     usePgpKeyHex("37169035A8BEDF1EC943E79308109B5E42E0C41D")
   )
 
