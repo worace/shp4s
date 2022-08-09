@@ -22,7 +22,7 @@ jobs:
         with:
           fetch-depth: 0
       - uses: olafurpg/setup-scala@v13
-      - run: echo $PGP_SECRET | base64 -w0 -d | gpg --import && gpg --list-keys && echo pizza > /tmp/pizza.txt && gpg --local-user 37169035A8BEDF1EC943E79308109B5E42E0C41D --batch --pinentry-mode loopback --passphrase $PGP_PASSPHRASE --detach-sign --armor --use-agent --output /tmp/pizza.txt.asc /tmp/pizza.txt
+      - run: echo $PGP_SECRET | base64 -w0 -d | gpg --import && gpg --list-sigs && gpg --list-keys && echo pizza > /tmp/pizza.txt && gpg --local-user 37169035A8BEDF1EC943E79308109B5E42E0C41D --batch --pinentry-mode loopback --passphrase $PGP_PASSPHRASE --detach-sign --armor --use-agent --output /tmp/pizza.txt.asc /tmp/pizza.txt
         env:
           PGP_PASSPHRASE: ${{ secrets.PGP_PASSPHRASE }}
           PGP_SECRET: ${{ secrets.PGP_SECRET }}
