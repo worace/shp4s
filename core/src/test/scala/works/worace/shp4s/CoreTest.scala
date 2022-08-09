@@ -1,13 +1,11 @@
 package works.worace.shp4s
 
-import cats.effect.{IO, ContextShift}
+import cats.effect.IO
 import scodec.Codec
 import works.worace.shp4s.Core._
+import cats.effect.unsafe.implicits.global
 
 class CoreTest extends munit.FunSuite {
-  implicit val csIO: ContextShift[IO] =
-    IO.contextShift(scala.concurrent.ExecutionContext.Implicits.global)
-
   def assertInDelta(a: Double, b: Double, delta: Double): Unit = {
     assert((a - b).abs < delta, s"Expected $a within $delta of $b")
   }

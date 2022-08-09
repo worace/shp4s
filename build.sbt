@@ -35,9 +35,9 @@ lazy val root = Project(
   .enablePlugins(ScalaUnidocPlugin)
   .settings(
     name := "shp4s",
-    excludeFilter in ghpagesCleanSite := "CNAME",
-    siteSubdirName in ScalaUnidoc := "api",
-    addMappingsToSiteDir(mappings in (ScalaUnidoc, packageDoc), siteSubdirName in ScalaUnidoc),
+    ghpagesCleanSite / excludeFilter := "CNAME",
+    ScalaUnidoc / siteSubdirName  := "api",
+    addMappingsToSiteDir(ScalaUnidoc / packageDoc / mappings, ScalaUnidoc / siteSubdirName),
     git.remoteRepo := "git@github.com:worace/shp4s.git",
     ghpagesNoJekyll := true
   )
@@ -50,10 +50,10 @@ lazy val core = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "org.scodec" %% "scodec-core" % "1.11.7",
-      "org.scodec" %% "scodec-stream" % "2.0.0",
-      "co.fs2" %% "fs2-io" % "2.0.0",
-      "com.github.albfernandez" % "javadbf" % "1.11.1"
+      "org.scodec" %% "scodec-core" % "1.11.9",
+      "org.scodec" %% "scodec-stream" % "3.0.2",
+      "co.fs2" %% "fs2-io" % "3.2.11",
+      "com.github.albfernandez" % "javadbf" % "1.13.1"
     )
   )
 
@@ -75,6 +75,8 @@ lazy val examples = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "com.lendup.fs2-blobstore" %% "gcs" % "0.6.0"
+      "com.github.fs2-blobstore" %% "gcs" % "0.9.6"
     )
   )
+
+Global / onChangedBuildSource := ReloadOnSourceChanges

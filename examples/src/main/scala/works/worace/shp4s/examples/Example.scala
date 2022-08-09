@@ -6,7 +6,7 @@ import com.google.cloud.storage.{Acl, Blob, BlobId, BlobInfo, Storage}
 
 import cats.effect._
 import com.google.cloud.storage.StorageOptions
-import blobstore.Path
+import java.nio.file.Path
 import java.nio.channels.Channel
 import java.nio.channels.Channels
 
@@ -14,21 +14,17 @@ import works.worace.shp4s._
 import Core.Props
 
 object Example extends IOApp {
-  import cats.effect.{Blocker, ExitCode, IO, IOApp, Resource}
+  import cats.effect.{ExitCode, IO, IOApp, Resource}
   import cats.implicits._
 
   def run(args: List[String]): IO[ExitCode] = {
     val path = args.head
     println(path)
 
-    val store: Resource[IO, (GcsStore[IO], Storage)] = for {
-      blocker <- Blocker[IO]
-    } yield {
-      println("build storage")
-      val storage = StorageOptions.newBuilder().build().getService()
-      println(storage)
-      (GcsStore[IO](storage, blocker, List()), storage)
-    }
+    println("build storage")
+    val storage = StorageOptions.newBuilder().build().getService()
+    println(storage)
+    val fs2Store = new GcsStore(storage, List(), false, false)
 
     val runStream: IO[ExitCode] = Core
       .streamShapefile(path)
@@ -43,7 +39,6 @@ object Example extends IOApp {
       .drain
       .as(ExitCode.Success)
 
-    store.use { case (fs2Store, storage) =>
       val shapes = readGcsShps("/shp_test/cb_2018_us_county_500k.shp", fs2Store)
       val props = readGcsProps("shp_test", "cb_2018_us_county_500k.dbf", storage)
 
@@ -57,7 +52,6 @@ object Example extends IOApp {
         .compile
         .drain
         .as(ExitCode.Success)
-    }
   }
 
   def debug(s: fs2.Stream[IO, String]): fs2.Stream[IO, String] = {
@@ -76,6 +70,6 @@ object Example extends IOApp {
   }
 
   def readGcsShps(gcsPath: String, store: GcsStore[IO]): fs2.Stream[IO, ShapeRecord] = {
-    Core.streamShapeRecords(store.get(Path(gcsPath), 4096))
+    Core.streamShapeRecords(store.get(Paths.get(gcsPath), 4096))
   }
 }
