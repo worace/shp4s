@@ -60,7 +60,8 @@ lazy val core = project
       "org.scodec" %% "scodec-core" % "1.11.9",
       "org.scodec" %% "scodec-stream" % "3.0.2",
       "co.fs2" %% "fs2-io" % "3.2.11",
-      "com.github.albfernandez" % "javadbf" % "1.13.1"
+      "com.github.albfernandez" % "javadbf" % "1.13.1",
+      "org.locationtech.jts" % "jts-core" % "1.19.0"
     )
   )
 

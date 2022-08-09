@@ -1,10 +1,12 @@
 package works.worace.shp4s
 
+sealed trait PointShape
+
 sealed trait Shape
 case object NullShape extends Shape
-case class Point(x: Double, y: Double) extends Shape
-case class PointZ(x: Double, y: Double, z: Double, m: Option[Double]) extends Shape
-case class PointM(x: Double, y: Double, m: Double) extends Shape {
+case class Point(x: Double, y: Double) extends Shape with PointShape
+case class PointZ(x: Double, y: Double, z: Double, m: Option[Double]) extends Shape with PointShape
+case class PointM(x: Double, y: Double, m: Double) extends Shape with PointShape {
   def pointXY: Point = Point(x, y)
 }
 case class MultiPoint(bbox: BBox, points: Vector[Point]) extends Shape
