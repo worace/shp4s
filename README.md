@@ -49,3 +49,4 @@ TODO Edge Cases
   * "close" the release, then "release" using sonatype UI options
 * Run `git tag vX.Y.Z` and push the tag
 * Set version to `-SNAPSHOT` for _next_ version, commit, and push
+* Note: I think [sbt-ci-release](https://github.com/sbt/sbt-ci-release) is better than doing this manually and i have used it previously on other projects but could not get it working this time for some reason `:rip:`
