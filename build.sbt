@@ -1,7 +1,7 @@
 ThisBuild / scalaVersion := "2.13.1"
 
 val commonSettings = Seq(
-  version := "0.0.3-SNAPSHOT",
+  version := "0.1.0",
   organization := "works.worace",
   homepage := Some(url("https://github.com/worace/shp4s")),
   libraryDependencies ++= Seq(
