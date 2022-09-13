@@ -6,8 +6,10 @@ Based on scodec and fs2.
 
 ### Installation
 
+Published for Scala 2.12 and 2.13
+
 ```scala
-libraryDependencies += "works.worace" % "shp4s-core" % "@VERSION@"
+libraryDependencies += "works.worace" %% "shp4s-core" % "0.1.0"
 ```
 
 ### Basic Decoding
