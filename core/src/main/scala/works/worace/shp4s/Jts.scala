@@ -1,12 +1,34 @@
-package works.worace.shp4s.jts
+package works.worace.shp4s
 
-import works.worace.shp4s._
-import org.locationtech.jts.geom.Geometry
 import org.locationtech.jts.{geom => jts}
+import org.locationtech.jts.geom.Geometry
 import org.locationtech.jts.algorithm.Orientation
 
-object Conversions {
-  def toJts(shape: Shape, srid: Int, pm: jts.PrecisionModel): Geometry = {
+case class JtsFeature(
+  geometry: Geometry,
+  properties: Map[String, DBFValue]
+)
+
+object Jts {
+  val DEFAULT_PRECISION_MODEl = new jts.PrecisionModel(jts.PrecisionModel.FLOATING)
+  object implicits {
+    implicit class ShpShapeToJts(shape: Shape) {
+      def toJts(srid: Int = 0, precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl): Geometry =
+        shapeToJts(shape, srid, precisionModel)
+    }
+
+    implicit class ShpFeatureToJts(feature: Feature) {
+      def toJts(srid: Int = 0, precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl): JtsFeature =
+        featureToJts(feature, srid, precisionModel)
+    }
+  }
+
+  def featureToJts(feature: Feature, srid: Int = 0, precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl): JtsFeature = {
+    JtsFeature(shapeToJts(feature.shape, srid, precisionModel), feature.properties)
+  }
+
+  def shapeToJts(shape: Shape, srid: Int = 0, precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl): Geometry = {
+    val pm = precisionModel
     val gf = new jts.GeometryFactory(pm, srid)
     // new jts.Point(0, 0)
     shape match {
@@ -54,11 +76,7 @@ object Conversions {
     }
   }
 
-  def toJts(shape: Shape): Geometry = {
-    toJts(shape, 0, defaultPM)
-  }
-
-  implicit class PointShapeToJts(point: PointShape) {
+  private implicit class PointShapeToJts(point: PointShape) {
     def toJtsCoord: jts.Coordinate = {
       point match {
         case Point(x, y)              => new jts.Coordinate(x, y)
@@ -69,7 +87,7 @@ object Conversions {
     }
   }
 
-  implicit class PolylineShapeToJts(pl: PolyLineShape) {
+  private implicit class PolylineShapeToJts(pl: PolyLineShape) {
     def toJtsLineStringOrMultiLineString(gf: jts.GeometryFactory): jts.Geometry = {
       val lines = pl.pointLines
 
@@ -82,35 +100,44 @@ object Conversions {
     }
   }
 
-  implicit class PolygonShapeToJts(polygon: PolygonShape) {
+  private implicit class PolygonShapeToJts(polygon: PolygonShape) {
     def toJtsPolygonOrMultiPolygon(gf: jts.GeometryFactory): jts.Geometry = {
       val rings = polygon.pointShapes
       // https://gis.stackexchange.com/questions/122816/shapefiles-polygon-type-is-it-in-fact-multipolygon
       // https://gis.stackexchange.com/questions/225368/understanding-difference-between-polygon-and-multipolygon-for-shapefiles-in-qgis
       // shapefile polygon decoding....
-      // 1 ring - polygon
-      // multiple rings -- depends on winding order
-      // CW: Start outer ring
+      // * 0 rings - polygon (empty)
+      // * 1 ring - polygon
+      // * multiple rings -- depends on winding order
+      //   CW: Start outer ring
       //   --- successive CCW -- inner rings
-      // CW / CCW / CCW --> Polygon 2 holes
-      // CW / CCW / CW --> MultiPolygon: 1xPolygon with 1 hole, 1x outer ring polygon
+      //   CW / CCW / CCW --> Polygon 2 holes
+      //   CW / CCW / CW --> MultiPolygon: 1xPolygon with 1 hole, 1x outer ring polygon
       if (polygon.pointShapes.isEmpty) {
         gf.createPolygon
       } else if (rings.size == 1) {
         gf.createPolygon(rings.head.toArray.map(_.toJtsCoord))
       } else {
+        println("decode multi-ring polygon to jts")
         val coordSeqs: Array[Array[jts.Coordinate]] =
           rings.toArray.map(_.toArray.map(_.toJtsCoord))
 
-        val ccwIndexes = (0 until rings.size).filter { idx => Orientation.isCCW(coordSeqs(idx)) }
+        println(s"rings: ${coordSeqs}")
 
-        if (ccwIndexes.size == 1) {
+        // Clockwise rings indicate exteriors
+        val cwIndexes = (0 until rings.size).filter { idx => !Orientation.isCCW(coordSeqs(idx)) }
+
+        println(s"orientations: ${coordSeqs.map(Orientation.isCCW).toList}")
+
+        println(s"clockwise indexes (starts of outer rings): $cwIndexes")
+
+        if (cwIndexes.size == 1) {
           // Single outer ring, make polygon
           val Array(head, rest @ _*) = coordSeqs.map(gf.createLinearRing)
           gf.createPolygon(head, rest.toArray)
         } else {
           // multiple outer rings, make multipolygon
-          val startEnds = ccwIndexes.zip(ccwIndexes.drop(1) :+ coordSeqs.size).toArray
+          val startEnds = cwIndexes.zip(cwIndexes.drop(1) :+ coordSeqs.size).toArray
           val polys: Array[jts.Polygon] = startEnds.map {
             case (start, stop) =>
               val outer = gf.createLinearRing(coordSeqs(start))
