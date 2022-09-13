@@ -48,7 +48,7 @@ lazy val root = Project(
     git.remoteRepo := "git@github.com:worace/shp4s.git",
     ghpagesNoJekyll := true,
     credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials"),
-    usePgpKeyHex("37169035A8BEDF1EC943E79308109B5E42E0C41D")
+    usePgpKeyHex("37169035A8BEDF1EC943E79308109B5E42E0C41D"),
   )
 
 lazy val core = project
@@ -64,16 +64,6 @@ lazy val core = project
       "co.fs2" %% "fs2-io" % "3.2.14",
       "com.github.albfernandez" % "javadbf" % "1.13.2",
       "org.locationtech.jts" % "jts-core" % "1.19.0"
-    )
-  )
-
-lazy val docs = project
-  .dependsOn(core)
-  .in(file("usage"))
-  .enablePlugins(MdocPlugin)
-  .settings(
-    mdocVariables := Map(
-      "VERSION" -> version.value
     )
   )
 
