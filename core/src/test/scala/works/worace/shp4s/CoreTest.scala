@@ -59,7 +59,7 @@ class CoreTest extends munit.FunSuite {
     shapeTest(TestFiles.multiPointZ, ShapeType.multiPointZ, Codecs.multiPointZ) { mpz =>
       val bb = BBox(431478.25, 141891.97, 431478.25, 141891.97)
       assertEquals(mpz.bbox, bb)
-      assertEquals(mpz.points.head, Point(431478.25, 141891.97))
+      assertEquals(mpz.points.head, PointZ(431478.25, 141891.97, 0.0, None))
     }
   }
 
@@ -68,6 +68,29 @@ class CoreTest extends munit.FunSuite {
     assertEquals(mpzs.size, 312)
     val types = mpzs.map(_.shape.getClass.getName).toSet
     assertEquals(types, Set("works.worace.shp4s.MultiPointZ"))
+
+    val exp = Vector(
+      MultiPointZ(
+        BBox(431478.25, 141891.97, 431478.25, 141891.97),
+        Vector(PointZ(431478.25, 141891.97, 0, None)),
+        Range(0, 0),
+        None
+      ),
+      MultiPointZ(
+        BBox(431661.25, 141917.97, 431661.25, 141917.97),
+        Vector(
+          PointZ(
+            431661.25,
+            141917.97,
+            0.0,
+            None
+          )
+        ),
+        Range(0, 0),
+        None
+      )
+    )
+    assertEquals(mpzs.map(_.shape).take(2), exp)
   }
 
   test("Polyline") {

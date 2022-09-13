@@ -17,10 +17,11 @@ object Conversions {
         val pointsArr = points.toArray.map(p => pointToJtsPoint(p, srid, pm))
         gf.createMultiPoint(pointsArr)
       }
-      case MultiPointZ(_, points, zs, Some(m)) => {
+      // MultiPointZ with Z and M values
+      case mpz @ MultiPointZ(_, points, zs, Some(m)) => {
         val pointsArr = points
-          .zip(zs.values)
-          .zip(m.values)
+          .zip(mpz.zRangedValues.values)
+          .zip(mpz.mRangedValues.get.values)
           .map {
             case ((point, z), m) =>
               gf.createPoint(new jts.CoordinateXYZM(point.x, point.y, z, m))
@@ -28,9 +29,10 @@ object Conversions {
           .toArray
         gf.createMultiPoint(pointsArr)
       }
-      case MultiPointZ(_, points, zs, None) => {
+      // MultiPointZ with only Z values
+      case mpz @ MultiPointZ(_, points, zs, None) => {
         val pointsArr = points
-          .zip(zs.values)
+          .zip(mpz.zRangedValues.values)
           .map {
             case ((point, z)) =>
               gf.createPoint(new jts.Coordinate(point.x, point.y, z))

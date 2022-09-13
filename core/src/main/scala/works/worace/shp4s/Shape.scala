@@ -1,6 +1,10 @@
 package works.worace.shp4s
 
-sealed trait PointShape
+sealed trait PointShape {
+  def x: Double
+  def y: Double
+  def pointXY: Point = Point(x, y)
+}
 sealed trait MultiPointShape
 
 sealed trait PolyLineShape {
@@ -13,19 +17,26 @@ sealed trait PolygonShape {
 
 sealed trait Shape
 case object NullShape extends Shape
-case class Point(x: Double, y: Double) extends Shape with PointShape
-case class PointZ(x: Double, y: Double, z: Double, m: Option[Double]) extends Shape with PointShape
-case class PointM(x: Double, y: Double, m: Double) extends Shape with PointShape {
-  def pointXY: Point = Point(x, y)
+case class Point(x: Double, y: Double) extends Shape with PointShape {
+  override def pointXY: Point = this
 }
+case class PointZ(x: Double, y: Double, z: Double, m: Option[Double]) extends Shape with PointShape
+case class PointM(x: Double, y: Double, m: Double) extends Shape with PointShape
 case class MultiPoint(bbox: BBox, points: Vector[Point]) extends Shape with MultiPointShape
 case class MultiPointZ(
   bbox: BBox,
-  points: Vector[Point],
-  z: RangedValues,
-  m: Option[RangedValues]
+  points: Vector[PointZ],
+  zRange: Range,
+  mRange: Option[Range]
 ) extends Shape
-    with MultiPointShape
+    with MultiPointShape {
+  def zRangedValues: RangedValues = {
+    RangedValues(zRange.min, zRange.max, points.map(_.z))
+  }
+  def mRangedValues: Option[RangedValues] = mRange.map { mRange =>
+    RangedValues(mRange.min, mRange.max, points.map(_.m.getOrElse(0.0)))
+  }
+}
 case class MultiPointM(bbox: BBox, mRange: Range, points: Vector[PointM])
     extends Shape
     with MultiPointShape {

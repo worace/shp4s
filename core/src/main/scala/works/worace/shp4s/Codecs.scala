@@ -40,26 +40,29 @@ private object Codecs {
       }
     )
 
-  val multiPointZBody = int32L
-    .flatZip { numPoints =>
-      vectorOfN(provide(numPoints), point) ::
-        Util.rangedValues(numPoints) ::
-        // TODO: Not sure using RangedValues.zero is right here -- should be None
-        // but it may never get called anyway because it's a unit codec?
-        Util.ifAvailable(Util.rangedValues(numPoints), RangedValues.zero)
+  val multiPointZ: Codec[MultiPointZ] = (Codecs.bbox :: int32L)
+    .flatPrepend {
+      case bbox :: numPoints :: HNil =>
+        vectorOfN(provide(numPoints), point) :: Util.rangedValues(numPoints) :: Util.ifAvailable(Util.rangedValues(numPoints), RangedValues.zero)
     }
     .xmap(
-      { case ((_numPoints, contents)) => contents }, {
-        v: (Vector[Point] :: RangedValues :: Option[RangedValues] :: HNil) =>
-          v match {
-            case points :: _ => {
-              (points.size, v)
+      {
+        case ((bbox :: _ :: HNil) :: points :: zVals :: mVals :: HNil) => {
+          val pointZs = mVals match {
+            case Some(mVals) => {
+              points.zip(zVals.values).zip(mVals.values).map { case ((point, z), m) => PointZ(point.x, point.y, z, Some(m)) }
+            }
+            case None => {
+              points.zip(zVals.values).map { case (point, z) => PointZ(point.x, point.y, z, None) }
             }
           }
+          MultiPointZ(bbox, pointZs, zVals.range, mVals.map(_.range))
+        }
+      },
+      (mp: MultiPointZ) => {
+        (mp.bbox :: mp.points.size :: HNil) :: mp.points.map(_.pointXY) :: mp.zRangedValues :: mp.mRangedValues :: HNil
       }
     )
-
-  val multiPointZ = (bbox :: multiPointZBody).as[MultiPointZ]
 
   case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
   val polyLineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
