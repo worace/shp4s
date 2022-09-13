@@ -36,5 +36,9 @@ object TestFiles {
 
   // https://gis-pdx.opendata.arcgis.com/datasets/PDX::zip-code-boundaries
   // City of portland zipcode boundaries -- multipolygons with holes
-  val portlandZips = Resource("Zip_Code_Boundaries.shp")
+  // Original file:
+  // val portlandZips = Resource("Zip_Code_Boundaries.shp")
+  // Same file projected to 4326 via:
+  // ogr2ogr portland_zips.shp -t_srs "EPSG:4326" Zip_Code_Boundaries.shp
+  val portlandZips = Resource("portland_zips.shp")
 }

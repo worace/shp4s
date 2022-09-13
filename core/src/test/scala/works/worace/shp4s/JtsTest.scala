@@ -58,6 +58,7 @@ class JtsTest extends munit.FunSuite {
     val singleConv = Jts.shapeToJts(single)
     assertEquals(singleConv.getGeometryType, "Polygon")
 
+
     val quad = polys.find(_.rings.size == 4).get
     println(quad)
     val quadConv = Jts.shapeToJts(quad)
@@ -70,5 +71,21 @@ class JtsTest extends munit.FunSuite {
     val quadIdx = polys.indexWhere(_.rings.size == 4)
     println(shps(quadIdx))
 
+    // postcode with highway separating 2 halves -- 2x outer rings
+    val beaverCreek = shps.find(_.properties("ZIPCODE") == DBFString("97004")).get
+    import Jts.implicits.ShpShapeToJts
+    val bcConv = beaverCreek.shape.toJts()
+    assertEquals(bcConv.getGeometryType, "MultiPolygon")
+    val bcMp = bcConv.asInstanceOf[jts.MultiPolygon]
+    assertEquals(bcMp.getNumGeometries(), 2)
+
+    // https://studio.unfolded.ai/public/8b306d90-711b-497f-a312-97014181a0a4
+    val a = bcMp.getGeometryN(0).asInstanceOf[jts.Polygon]
+    val b = bcMp.getGeometryN(1).asInstanceOf[jts.Polygon]
+    assertEquals(a.getCentroid().getX(), -122.4565844031911)
+    assertEquals(a.getCentroid().getY(), 45.25037741247915)
+
+    assertEquals(b.getCentroid().getX(), -122.55160057393509)
+    assertEquals(b.getCentroid().getY(), 45.287557341815024)
   }
 }
