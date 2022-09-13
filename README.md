@@ -70,6 +70,22 @@ val jtsFeat: JtsFeature = Jts.featureToJts(feature)
 // )
 ```
 
+Or you can use the provided implicit classes
+
+```scala
+import org.locationtech.jts.geom.Geometry
+import works.worace.shp4s.Core
+import works.worace.shp4s.Shape
+import works.worace.shp4s.Feature
+import works.worace.shp4s.DBFValue
+import works.worace.shp4s.JtsFeature
+import works.worace.shp4s.Jts.implicits._
+
+val features: Vector[Feature] = Core.readAllSync("./path/to/file.shp")
+val feature: Feature = features.head
+feature.toJts() // JtsFeature(...)
+```
+
 ## Development
 
 * Run tests with `sbt test`
