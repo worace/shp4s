@@ -57,10 +57,10 @@ lazy val core = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "org.scodec" %% "scodec-core" % "1.11.9",
-      "org.scodec" %% "scodec-stream" % "3.0.2",
-      "co.fs2" %% "fs2-io" % "3.2.11",
-      "com.github.albfernandez" % "javadbf" % "1.13.1",
+      "org.scodec" %% "scodec-core" % "1.11.10",
+      "co.fs2" %% "fs2-scodec" % "3.2.14",
+      "co.fs2" %% "fs2-io" % "3.2.14",
+      "com.github.albfernandez" % "javadbf" % "1.13.2",
       "org.locationtech.jts" % "jts-core" % "1.19.0"
     )
   )
@@ -72,18 +72,6 @@ lazy val docs = project
   .settings(
     mdocVariables := Map(
       "VERSION" -> version.value
-    )
-  )
-
-lazy val examples = project
-  .dependsOn(core)
-  .settings(commonSettings: _*)
-  .settings(
-    name := "shp4s-examples"
-  )
-  .settings(
-    libraryDependencies ++= Seq(
-      "com.github.fs2-blobstore" %% "gcs" % "0.9.6"
     )
   )
 

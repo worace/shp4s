@@ -5,7 +5,7 @@ import scodec.bits._
 import scodec.codecs._
 import shapeless.HNil
 import shapeless.::
-import scodec.stream._
+import fs2.interop.scodec._
 
 private object Codecs {
   val nullShape = provide(NullShape)

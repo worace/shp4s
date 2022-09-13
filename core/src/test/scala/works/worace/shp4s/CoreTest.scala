@@ -1,6 +1,5 @@
 package works.worace.shp4s
 
-import cats.effect.IO
 import scodec.Codec
 import works.worace.shp4s.Core._
 import cats.effect.unsafe.implicits.global

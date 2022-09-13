@@ -5,7 +5,6 @@ import scodec._
 import scodec.codecs._
 import scodec.Attempt.Successful
 import shapeless.HNil
-import scodec.stream._
 import cats.effect.IO
 import scala.collection.immutable.{Stream => _, _}
 import java.nio.file.Path
@@ -60,7 +59,7 @@ case class ShapeRecord(header: RecordHeader, shape: Shape)
 object Core {
   type Props = Map[String, DBFValue]
   val HEADER_SIZE = 100
-  def featureStream(
+  private def featureStream(
     shapes: fs2.Stream[IO, ShapeRecord],
     props: fs2.Stream[IO, Map[String, DBFValue]]
   ): fs2.Stream[IO, Feature] = {
@@ -70,18 +69,18 @@ object Core {
     }
   }
 
+  def streamShapeRecords(shpStream: fs2.Stream[IO, Byte]): fs2.Stream[IO, ShapeRecord] = {
+    shpStream
+      .drop(HEADER_SIZE)
+      .through(Codecs.shpStream.toPipeByte)
+  }
+
   def streamShapefile(path: Path): fs2.Stream[IO, Feature] = {
     val dbfPath = path.resolveSibling(path.getFileName.toString.replace(".shp", ".dbf"))
     val props = DBFIterator(dbfPath).stream
     val shapes = streamShapeRecords(Files[IO].readAll(fs2.io.file.Path.fromNioPath(path)))
 
     featureStream(shapes, props)
-  }
-
-  def streamShapeRecords(shpStream: fs2.Stream[IO, Byte]): fs2.Stream[IO, ShapeRecord] = {
-    shpStream
-      .drop(HEADER_SIZE)
-      .through(Codecs.shpStream.toPipeByte)
   }
 
   def streamShapefile(path: String): fs2.Stream[IO, Feature] = {
