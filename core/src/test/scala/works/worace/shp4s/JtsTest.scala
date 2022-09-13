@@ -58,7 +58,9 @@ class JtsTest extends munit.FunSuite {
     val singleConv = Jts.shapeToJts(single)
     assertEquals(singleConv.getGeometryType, "Polygon")
 
-
+    // This one seems to be a data error...has a miniscule inner ring in
+    // the highway in the middle of the postcode. But does decode as
+    // CW/CCW/CCW/CW (2 polys, 1 with 2 inner holes)
     val quad = polys.find(_.rings.size == 4).get
     println(quad)
     val quadConv = Jts.shapeToJts(quad)
@@ -66,10 +68,7 @@ class JtsTest extends munit.FunSuite {
     assertEquals(quadConv.asInstanceOf[jts.MultiPolygon].getNumGeometries, 2)
     val poly1 = quadConv.asInstanceOf[jts.MultiPolygon].getGeometryN(0)
     val poly2 = quadConv.asInstanceOf[jts.MultiPolygon].getGeometryN(1)
-    println(poly1)
-    println(poly2)
     val quadIdx = polys.indexWhere(_.rings.size == 4)
-    println(shps(quadIdx))
 
     // postcode with highway separating 2 halves -- 2x outer rings
     val beaverCreek = shps.find(_.properties("ZIPCODE") == DBFString("97004")).get
