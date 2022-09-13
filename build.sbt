@@ -70,3 +70,4 @@ lazy val core = project
 Global / onChangedBuildSource := ReloadOnSourceChanges
 
 addCommandAlias("lint", ";scalafixAll;scalafmtAll")
+addCommandAlias("ci", "+test;scalafmtCheck;scalafixAll --check")
