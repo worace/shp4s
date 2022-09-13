@@ -2,42 +2,95 @@
 
 Based on scodec and fs2.
 
+## Quick-Start
+
+### Installation
+
 ```scala
-import works.worace.shp4s
-import cats.effect.unsafe.implicits.global
-
-// Read features into Vector
-shp4s.Core.readAllSync("test.shp")
-
-// fs2.Stream[IO, Feature]
-streamShapefile(path: String)
+libraryDependencies += "works.worace" % "shp4s-core" % "@VERSION@"
 ```
 
-Types - 14
-* [X] NullShape
-* [X] Point
-* [X] PolyLine
-* [X] Polygon
-* [X] MultiPoint
-* [X] PointZ
-* [x] PolylineZ
-* [x] PolygonZ
-* [X] MultiPointZ
-* [x] PointM
-* [x] PolyLineM
-* [x] PolygonM
-* [x] MultiPointM
-* [ ] MultiPatch
-* [X] DBF
-* [ ] DBF proper resource handling (cats bracket? closing in finally?)
+### Basic Decoding
 
-TODO Edge Cases
-* [x] Verify PointZ file with M values
-* [ ] Verify MultiPointZ with M values
-* [ ] Convert MultiPointZ to hold Vector[PointZ] values
-* [x] PolylineZ with M Values
-* [ ] *-Z encoding with empty M values -- should omit entirely rather than encoding 0's
-* [x] PolyLineZ Sample File
+```scala
+import works.worace.shp4s.Core
+import works.worace.shp4s.Shape
+import works.worace.shp4s.Feature
+import works.worace.shp4s.DBFValue
+
+val features: Vector[Feature] = Core.readAllSync("./path/to/file.shp")
+
+val feature: Feature = features.head
+
+// Shape geometry -- Point, PolyLine, etc
+val shape: Shape = feature.shape
+
+// Properties, from DBF file
+val props: Map[String, DBFValue] = feature.properties
+```
+
+### Streaming Usage (with fs2)
+
+If you don't want to read the whole file into memory, you can decode it in streaming fashion using [fs2](https://fs2.io/)
+
+Note that you will need to use some [cats-effect](https://typelevel.org/cats-effect/) based tooling for this (fs2 streams resolve to an `IO` instance which needs to be evaluated).
+
+```scala
+import works.worace.shp4s.Core
+import works.worace.shp4s.Shape
+import works.worace.shp4s.Feature
+import cats.effect.IO
+
+val featureStream: fs2.Stream[IO, Feature] = Core.streamShapefile("./path/to/my.shp")
+```
+
+### Converting Shapefile Features to JTS Geometries
+
+```scala
+import org.locationtech.jts.geom.Geometry
+import works.worace.shp4s.Core
+import works.worace.shp4s.Shape
+import works.worace.shp4s.Feature
+import works.worace.shp4s.DBFValue
+import works.worace.shp4s.Jts
+import works.worace.shp4s.JtsFeature
+
+val features: Vector[Feature] = Core.readAllSync("./path/to/file.shp")
+
+val feature: Feature = features.head
+
+// Convert just the feature's geometry
+val geom: Geometry = Jts.shapeToJts(feature.shape)
+
+// Convert feature and pass through properties
+val jtsFeat: JtsFeature = Jts.featureToJts(feature)
+// JtsFeature(
+//   geometry=Point (-118.13306035523306 33.85531587901563),
+//   properties=Map(id -> DBFNumeric(1))
+// )
+```
+
+Or you can use the provided implicit classes
+
+```scala
+import org.locationtech.jts.geom.Geometry
+import works.worace.shp4s.Core
+import works.worace.shp4s.Shape
+import works.worace.shp4s.Feature
+import works.worace.shp4s.DBFValue
+import works.worace.shp4s.JtsFeature
+import works.worace.shp4s.Jts.implicits._
+
+val features: Vector[Feature] = Core.readAllSync("./path/to/file.shp")
+val feature: Feature = features.head
+feature.toJts() // JtsFeature(...)
+```
+
+## Development
+
+* Run tests with `sbt test`
+* Push Scaladoc to GitHub Pages: `sbt ghpagesPushSite`
+* Run scalafmt: `sbt scalafmtAll`
 
 ## Releasing
 

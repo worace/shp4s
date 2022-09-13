@@ -1,11 +1,10 @@
 package works.worace.shp4s
 
 import scodec._
-import scodec.bits._
 import scodec.codecs._
 import shapeless.HNil
 import shapeless.::
-import scodec.stream._
+import fs2.interop.scodec._
 
 private object Codecs {
   val nullShape = provide(NullShape)
@@ -18,14 +17,14 @@ private object Codecs {
   )
 
   val multiPoint =
-    (bbox :: int32L.consume(numPoints => vectorOfN(provide(numPoints), Point.codec))(points =>
+    (bbox :: int32L.consume(numPoints => vectorOfN(provide(numPoints), point))(points =>
       points.size
     )).as[MultiPoint]
 
   val multiPointM: Codec[MultiPointM] = (Codecs.bbox :: int32L)
     .flatPrepend {
-      case bbox :: numPoints :: HNil =>
-        vectorOfN(provide(numPoints), Point.codec) :: Util.rangedValues(numPoints)
+      case _ :: numPoints :: HNil =>
+        vectorOfN(provide(numPoints), point) :: Util.rangedValues(numPoints)
     }
     .xmap(
       {
@@ -40,26 +39,35 @@ private object Codecs {
       }
     )
 
-  val multiPointZBody = int32L
-    .flatZip { numPoints =>
-      vectorOfN(provide(numPoints), point) ::
-        Util.rangedValues(numPoints) ::
-        // TODO: Not sure using RangedValues.zero is right here -- should be None
-        // but it may never get called anyway because it's a unit codec?
-        Util.ifAvailable(Util.rangedValues(numPoints), RangedValues.zero)
+  val multiPointZ: Codec[MultiPointZ] = (Codecs.bbox :: int32L)
+    .flatPrepend {
+      case _ :: numPoints :: HNil =>
+        vectorOfN(provide(numPoints), point) :: Util.rangedValues(numPoints) :: Util.ifAvailable(
+          Util.rangedValues(numPoints),
+          RangedValues.zero
+        )
     }
     .xmap(
-      { case ((_numPoints, contents)) => contents }, {
-        v: (Vector[Point] :: RangedValues :: Option[RangedValues] :: HNil) =>
-          v match {
-            case points :: _ => {
-              (points.size, v)
+      {
+        case ((bbox :: _ :: HNil) :: points :: zVals :: mVals :: HNil) => {
+          val pointZs = mVals match {
+            case Some(mVals) => {
+              points.zip(zVals.values).zip(mVals.values).map {
+                case ((point, z), m) => PointZ(point.x, point.y, z, Some(m))
+              }
+            }
+            case None => {
+              points.zip(zVals.values).map { case (point, z) => PointZ(point.x, point.y, z, None) }
             }
           }
+          MultiPointZ(bbox, pointZs, zVals.range, mVals.map(_.range))
+        }
+      },
+      (mp: MultiPointZ) => {
+        (mp.bbox :: mp.points.size :: HNil) :: mp.points
+          .map(_.pointXY) :: mp.zRangedValues :: mp.mRangedValues :: HNil
       }
     )
-
-  val multiPointZ = (bbox :: multiPointZBody).as[MultiPointZ]
 
   case class PolyLineHeader(bbox: BBox, numParts: Int, numPoints: Int)
   val polyLineHeader = (bbox :: int32L :: int32L).as[PolyLineHeader]
@@ -68,7 +76,7 @@ private object Codecs {
     .flatPrepend { h => vectorOfN(provide(h.numParts), int32L).hlist }
     .flatPrepend {
       case h :: _ =>
-        vectorOfN(provide(h.numPoints), Point.codec).hlist
+        vectorOfN(provide(h.numPoints), point).hlist
     }
     .xmap(
       {
@@ -155,7 +163,7 @@ private object Codecs {
         discriminated[Shape]
           .by(int32L)
           .subcaseO(ShapeType.nullShape) {
-            case n: NullShape.type => Some(NullShape)
+            case _: NullShape.type => Some(NullShape)
             case _                 => None
           }(Codecs.nullShape)
           .subcaseO(ShapeType.point) {
@@ -180,31 +188,31 @@ private object Codecs {
           }(Codecs.polygon)
           .subcaseO(ShapeType.pointZ) {
             case p: PointZ => Some(p)
-            case o         => None
+            case _         => None
           }(Codecs.pointZ)
           .subcaseO(ShapeType.polyLineZ) {
             case p: PolyLineZ => Some(p)
-            case o            => None
+            case _            => None
           }(Codecs.polyLineZ)
           .subcaseO(ShapeType.polygonZ) {
             case p: PolygonZ => Some(p)
-            case o           => None
+            case _           => None
           }(Codecs.polygonZ)
           .subcaseO(ShapeType.pointM) {
             case p: PointM => Some(p)
-            case o         => None
+            case _         => None
           }(Codecs.pointM)
           .subcaseO(ShapeType.polyLineM) {
             case s: PolyLineM => Some(s)
-            case o            => None
+            case _            => None
           }(Codecs.polyLineM)
           .subcaseO(ShapeType.polygonM) {
             case s: PolygonM => Some(s)
-            case o           => None
+            case _           => None
           }(Codecs.polygonM)
           .subcaseO(ShapeType.multiPointM) {
             case s: MultiPointM => Some(s)
-            case o              => None
+            case _              => None
           }(Codecs.multiPointM)
       ).hlist
     }

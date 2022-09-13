@@ -4,7 +4,6 @@ import scodec.bits.BitVector
 import java.nio.file.{Files, Paths}
 import java.net.URL
 import java.nio.file.Path
-import scala.io.Source
 
 case class Resource(url: URL) {
   def bytes: Array[Byte] = Files.readAllBytes(Paths.get(url.getPath))
@@ -31,4 +30,15 @@ object TestFiles {
   val polyLineM = Resource("polylinem.shp")
   val polygonM = Resource("polygonm.shp")
   val polygonZM = Resource("polygonzm.shp")
+  // Test files copied from GDAL test suite
+  // https://github.com/OSGeo/gdal/tree/master/autotest/ogr/data/shp
+  val gdalGjMultiPoly = Resource("gjmultipoly.shp")
+
+  // https://gis-pdx.opendata.arcgis.com/datasets/PDX::zip-code-boundaries
+  // City of portland zipcode boundaries -- multipolygons with holes
+  // Original file:
+  // val portlandZips = Resource("Zip_Code_Boundaries.shp")
+  // Same file projected to 4326 via:
+  // ogr2ogr portland_zips.shp -t_srs "EPSG:4326" Zip_Code_Boundaries.shp
+  val portlandZips = Resource("portland_zips.shp")
 }

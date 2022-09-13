@@ -10,7 +10,9 @@ val commonSettings = Seq(
   crossScalaVersions := Seq("2.12.11", "2.13.1"),
   scalaVersion := "2.13.1",
   testFrameworks += new TestFramework("munit.Framework"),
-  scalacOptions ++= Seq("-Xfatal-warnings", "-feature", "-deprecation"),
+  scalacOptions ++= Seq("-feature", "-deprecation", "-Ywarn-unused"),
+  semanticdbEnabled := true,
+  semanticdbVersion := scalafixSemanticdb.revision,
   licenses := Seq("APL2" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
   developers := List(
     Developer(
@@ -46,7 +48,7 @@ lazy val root = Project(
     git.remoteRepo := "git@github.com:worace/shp4s.git",
     ghpagesNoJekyll := true,
     credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials"),
-    usePgpKeyHex("37169035A8BEDF1EC943E79308109B5E42E0C41D")
+    usePgpKeyHex("37169035A8BEDF1EC943E79308109B5E42E0C41D"),
   )
 
 lazy val core = project
@@ -57,34 +59,15 @@ lazy val core = project
   )
   .settings(
     libraryDependencies ++= Seq(
-      "org.scodec" %% "scodec-core" % "1.11.9",
-      "org.scodec" %% "scodec-stream" % "3.0.2",
-      "co.fs2" %% "fs2-io" % "3.2.11",
-      "com.github.albfernandez" % "javadbf" % "1.13.1",
+      "org.scodec" %% "scodec-core" % "1.11.10",
+      "co.fs2" %% "fs2-scodec" % "3.2.14",
+      "co.fs2" %% "fs2-io" % "3.2.14",
+      "com.github.albfernandez" % "javadbf" % "1.13.2",
       "org.locationtech.jts" % "jts-core" % "1.19.0"
     )
   )
 
-lazy val docs = project
-  .dependsOn(core)
-  .in(file("usage"))
-  .enablePlugins(MdocPlugin)
-  .settings(
-    mdocVariables := Map(
-      "VERSION" -> version.value
-    )
-  )
-
-lazy val examples = project
-  .dependsOn(core)
-  .settings(commonSettings: _*)
-  .settings(
-    name := "shp4s-examples"
-  )
-  .settings(
-    libraryDependencies ++= Seq(
-      "com.github.fs2-blobstore" %% "gcs" % "0.9.6"
-    )
-  )
-
 Global / onChangedBuildSource := ReloadOnSourceChanges
+
+addCommandAlias("lint", ";scalafixAll;scalafmtAll")
+addCommandAlias("ci", "+test;scalafmtCheck;scalafixAll --check")

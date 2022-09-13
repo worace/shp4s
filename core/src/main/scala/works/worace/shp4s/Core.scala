@@ -3,13 +3,9 @@ package works.worace.shp4s
 import scodec.bits._
 import scodec._
 import scodec.codecs._
-import scodec.Attempt.Successful
-import shapeless.HNil
-import scodec.stream._
 import cats.effect.IO
 import scala.collection.immutable.{Stream => _, _}
 import java.nio.file.Path
-import shapeless.::
 import scala.util.Try
 import java.nio.file.Paths
 import fs2.io.file.Files
@@ -60,7 +56,7 @@ case class ShapeRecord(header: RecordHeader, shape: Shape)
 object Core {
   type Props = Map[String, DBFValue]
   val HEADER_SIZE = 100
-  def featureStream(
+  private def featureStream(
     shapes: fs2.Stream[IO, ShapeRecord],
     props: fs2.Stream[IO, Map[String, DBFValue]]
   ): fs2.Stream[IO, Feature] = {
@@ -68,6 +64,12 @@ object Core {
       case (shape, props) =>
         Feature(shape.header.recordNumber, shape.shape, props)
     }
+  }
+
+  private def streamShapeRecords(shpStream: fs2.Stream[IO, Byte]): fs2.Stream[IO, ShapeRecord] = {
+    shpStream
+      .drop(HEADER_SIZE)
+      .through(Codecs.shpStream.toPipeByte)
   }
 
   def streamShapefile(path: Path): fs2.Stream[IO, Feature] = {
@@ -78,22 +80,20 @@ object Core {
     featureStream(shapes, props)
   }
 
-  def streamShapeRecords(shpStream: fs2.Stream[IO, Byte]): fs2.Stream[IO, ShapeRecord] = {
-    shpStream
-      .drop(HEADER_SIZE)
-      .through(Codecs.shpStream.toPipeByte)
-  }
-
   def streamShapefile(path: String): fs2.Stream[IO, Feature] = {
     streamShapefile(Paths.get(path))
   }
 
-  def readAllSync(path: Path)(implicit runtime: cats.effect.unsafe.IORuntime): Vector[Feature] = {
+  def readAllSyncFromPath(path: Path)(
+    implicit runtime: cats.effect.unsafe.IORuntime = cats.effect.unsafe.implicits.global
+  ): Vector[Feature] = {
     streamShapefile(path).compile.toVector.unsafeRunSync()
   }
 
-  def readAllSync(path: String)(implicit runtime: cats.effect.unsafe.IORuntime): Vector[Feature] = {
-    readAllSync(Paths.get(path))
+  def readAllSync(path: String)(
+    implicit runtime: cats.effect.unsafe.IORuntime = cats.effect.unsafe.implicits.global
+  ): Vector[Feature] = {
+    readAllSyncFromPath(Paths.get(path))
   }
 
   def readHeader(bytes: Array[Byte]): Try[FileHeader] = {
