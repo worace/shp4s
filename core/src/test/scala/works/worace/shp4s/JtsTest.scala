@@ -62,7 +62,6 @@ class JtsTest extends munit.FunSuite {
     // the highway in the middle of the postcode. But does decode as
     // CW/CCW/CCW/CW (2 polys, 1 with 2 inner holes)
     val quad = polys.find(_.rings.size == 4).get
-    println(quad)
     val quadConv = Jts.shapeToJts(quad)
     assertEquals(quadConv.getGeometryType, "MultiPolygon")
     assertEquals(quadConv.asInstanceOf[jts.MultiPolygon].getNumGeometries, 2)

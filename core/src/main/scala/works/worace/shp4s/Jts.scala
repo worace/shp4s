@@ -132,18 +132,11 @@ object Jts {
       } else if (rings.size == 1) {
         gf.createPolygon(rings.head.toArray.map(_.toJtsCoord))
       } else {
-        println("decode multi-ring polygon to jts")
         val coordSeqs: Array[Array[jts.Coordinate]] =
           rings.toArray.map(_.toArray.map(_.toJtsCoord))
 
-        println(s"rings: ${coordSeqs}")
-
         // Clockwise rings indicate exteriors
         val cwIndexes = (0 until rings.size).filter { idx => !Orientation.isCCW(coordSeqs(idx)) }
-
-        println(s"orientations: ${coordSeqs.map(Orientation.isCCW).toList}")
-
-        println(s"clockwise indexes (starts of outer rings): $cwIndexes")
 
         if (cwIndexes.size == 1) {
           // Single outer ring, make polygon
