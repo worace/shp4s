@@ -41,4 +41,9 @@ object TestFiles {
   // Same file projected to 4326 via:
   // ogr2ogr portland_zips.shp -t_srs "EPSG:4326" Zip_Code_Boundaries.shp
   val portlandZips = Resource("portland_zips.shp")
+
+  // US Census sample data -- seems to have a null value in one
+  // of its numeric fields
+  val census = Resource("tl_2020_60_tabblock20.shp")
+  val censusDbf = Resource("tl_2020_60_tabblock20.dbf")
 }

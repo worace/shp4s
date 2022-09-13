@@ -17,6 +17,7 @@ case class DBFDate(value: Date) extends DBFValue
 case class DBFFloat(value: BigDecimal) extends DBFValue
 case class DBFNumeric(value: BigDecimal) extends DBFValue
 case class DBFLogical(value: Boolean) extends DBFValue
+case object DBFNull extends DBFValue
 
 class DBFIterator(is: InputStream) extends Iterator[Map[String, DBFValue]] {
   private val reader: DBFReader = new DBFReader(is)
@@ -25,16 +26,34 @@ class DBFIterator(is: InputStream) extends Iterator[Map[String, DBFValue]] {
   private val rowCount = reader.getRecordCount()
   private var fetchedCount = 0
 
-  private def readDBFField(row: DBFRow, field: DBFField): DBFValue = {
+  private implicit class DbfRowExt(row: DBFRow) {
+    def strOpt(field: DBFField): Option[String] = {
+      Option(row.getString(field.getName))
+    }
+    def longOpt(field: DBFField): Option[Long] = {
+      Option(row.getLong(field.getName))
+    }
+    def dateOpt(field: DBFField): Option[Date] = {
+      Option(row.getDate(field.getName))
+    }
+    def bigDecimalOpt(field: DBFField): Option[java.math.BigDecimal] = {
+      Option(row.getBigDecimal(field.getName))
+    }
+    def boolOpt(field: DBFField): Option[Boolean] = {
+      Option(row.getBoolean(field.getName))
+    }
+  }
+
+  private def readDBFField(row: DBFRow, field: DBFField): Option[DBFValue] = {
     field.getType match {
-      case DBFDataType.CHARACTER      => DBFString(row.getString(field.getName))
-      case DBFDataType.LONG           => DBFLong(row.getLong(field.getName))
-      case DBFDataType.DATE           => DBFDate(row.getDate(field.getName))
-      case DBFDataType.FLOATING_POINT => DBFFloat(row.getBigDecimal(field.getName))
-      case DBFDataType.NUMERIC        => DBFNumeric(row.getBigDecimal(field.getName))
-      case DBFDataType.LOGICAL        => DBFLogical(row.getBoolean(field.getName))
-      case DBFDataType.VARCHAR        => DBFString(row.getString(field.getName))
-      case _                          => DBFString("")
+      case DBFDataType.CHARACTER      => row.strOpt(field).map(DBFString)
+      case DBFDataType.LONG           => row.longOpt(field).map(DBFLong)
+      case DBFDataType.DATE           => row.dateOpt(field).map(DBFDate)
+      case DBFDataType.FLOATING_POINT => row.bigDecimalOpt(field).map(DBFFloat(_))
+      case DBFDataType.NUMERIC        => row.bigDecimalOpt(field).map(DBFNumeric(_))
+      case DBFDataType.LOGICAL        => row.boolOpt(field).map(DBFLogical)
+      case DBFDataType.VARCHAR        => row.strOpt(field).map(DBFString)
+      case _                          => None
     }
   }
 
@@ -44,7 +63,7 @@ class DBFIterator(is: InputStream) extends Iterator[Map[String, DBFValue]] {
 
   def next(): Map[String, DBFValue] = {
     val row = reader.nextRow()
-    val r = fields.map(field => field.getName -> readDBFField(row, field)).toMap
+    val r = fields.map(field => field.getName -> readDBFField(row, field).getOrElse(DBFNull)).toMap
     fetchedCount += 1
     r
   }
