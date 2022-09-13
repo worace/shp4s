@@ -3,6 +3,7 @@ package works.worace.shp4s.jts
 import works.worace.shp4s._
 import org.locationtech.jts.geom.Geometry
 import org.locationtech.jts.{geom => jts}
+import org.locationtech.jts.algorithm.Orientation
 
 object Conversions {
   def toJts(shape: Shape, srid: Int, pm: jts.PrecisionModel): Geometry = {
@@ -41,17 +42,13 @@ object Conversions {
         val pointsArr = points.map { p => gf.createPoint(new jts.CoordinateXYM(p.x, p.y, p.m)) }.toArray
         gf.createMultiPoint(pointsArr)
       }
-      case PolyLine(_, lines) => {
-        if (lines.size > 1) {
-          //multilinestring
-          val linestrings = lines.toArray.map(l => gf.createLineString(l.toArray.map(_.toJtsCoord)))
-          gf.createMultiLineString(linestrings)
-        } else {
-          //linestring
-          gf.createLineString(lines.head.toArray.map(_.toJtsCoord))
-        }
-      }
-      case _ => throw new RuntimeException("oops")
+      case pl @ PolyLine(_, lines) => pl.toJtsLineStringOrMultiLineString(gf)
+      case pl @ PolyLineZ(_, _, _, lines) => pl.toJtsLineStringOrMultiLineString(gf)
+      case pl @ PolyLineM(_, _, lines) => pl.toJtsLineStringOrMultiLineString(gf)
+      case p @ Polygon(_, rings)        => p.toJtsPolygonOrMultiPolygon(gf)
+      case p @ PolygonM(_, _, rings)    => p.toJtsPolygonOrMultiPolygon(gf)
+      case p @ PolygonZ(_, _, _, rings) => p.toJtsPolygonOrMultiPolygon(gf)
+      case NullShape => gf.createEmpty(0)
     }
   }
 
@@ -70,15 +67,63 @@ object Conversions {
     }
   }
 
+  implicit class PolylineShapeToJts(pl: PolyLineShape) {
+    def toJtsLineStringOrMultiLineString(gf: jts.GeometryFactory): jts.Geometry = {
+      val lines = pl.pointLines
+
+      val jtsCoords = lines.toArray.map { line => line.toArray.map { p => p.toJtsCoord } }
+      if (jtsCoords.size > 1) {
+        gf.createLineString(jtsCoords.head)
+      } else {
+        gf.createMultiLineString(jtsCoords.map(gf.createLineString))
+      }
+    }
+  }
+
+  implicit class PolygonShapeToJts(polygon: PolygonShape) {
+    def toJtsPolygonOrMultiPolygon(gf: jts.GeometryFactory): jts.Geometry = {
+      val rings = polygon.pointShapes
+      // https://gis.stackexchange.com/questions/122816/shapefiles-polygon-type-is-it-in-fact-multipolygon
+      // https://gis.stackexchange.com/questions/225368/understanding-difference-between-polygon-and-multipolygon-for-shapefiles-in-qgis
+      // shapefile polygon decoding....
+      // 1 ring - polygon
+      // multiple rings -- depends on winding order
+      // CW: Start outer ring
+      //   --- successive CCW -- inner rings
+      // CW / CCW / CCW --> Polygon 2 holes
+      // CW / CCW / CW --> MultiPolygon: 1xPolygon with 1 hole, 1x outer ring polygon
+      if (polygon.pointShapes.isEmpty) {
+        gf.createPolygon
+      } else if (rings.size == 1) {
+        gf.createPolygon(rings.head.toArray.map(_.toJtsCoord))
+      } else {
+        val coordSeqs: Array[Array[jts.Coordinate]] =
+          rings.toArray.map(_.toArray.map(_.toJtsCoord))
+
+        val ccwIndexes = (0 until rings.size).filter { idx => Orientation.isCCW(coordSeqs(idx)) }
+
+        if (ccwIndexes.size == 1) {
+          // Single outer ring, make polygon
+          val Array(head, rest @ _*) = coordSeqs.map(gf.createLinearRing)
+          gf.createPolygon(head, rest.toArray)
+        } else {
+          // multiple outer rings, make multipolygon
+          val startEnds = ccwIndexes.zip(ccwIndexes.drop(1) :+ coordSeqs.size).toArray
+          val polys: Array[jts.Polygon] = startEnds.map {
+            case (start, stop) =>
+              val outer = gf.createLinearRing(coordSeqs(start))
+              val inners = coordSeqs.slice(start + 1, stop - 1).map(gf.createLinearRing(_))
+              gf.createPolygon(outer, inners)
+          }
+          gf.createMultiPolygon(polys)
+        }
+      }
+    }
+  }
+
   private def pointToJtsPoint(point: PointShape, srid: Int, pm: jts.PrecisionModel): jts.Point = {
     val gf = new jts.GeometryFactory(pm, srid)
     gf.createPoint(point.toJtsCoord)
-    // point match {
-    //   case Point(x, y)              => gf.createPoint(new jts.Coordinate(x, y))
-    //   case PointM(x, y, m)          => gf.createPoint(new jts.CoordinateXYM(x, y, m))
-    //   case PointZ(x, y, z, Some(m)) => gf.createPoint(new jts.CoordinateXYZM(x, y, z, m))
-    //   case PointZ(x, y, z, None)    => gf.createPoint(new jts.Coordinate(x, y, z))
-    // }
   }
 
   private val defaultPM = new jts.PrecisionModel(jts.PrecisionModel.FLOATING)
