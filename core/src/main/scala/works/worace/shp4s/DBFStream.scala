@@ -3,7 +3,6 @@ package works.worace.shp4s
 import java.io.FileInputStream
 import com.linuxense.javadbf.{DBFReader, DBFField}
 import java.nio.file.Path
-import scala.util.Try
 import java.util.Date
 import scala.math.BigDecimal
 import com.linuxense.javadbf.DBFRow
@@ -23,7 +22,6 @@ class DBFIterator(is: InputStream) extends Iterator[Map[String, DBFValue]] {
   private val reader: DBFReader = new DBFReader(is)
   private val fieldCount = reader.getFieldCount
   private val fields: Vector[DBFField] = (0 until fieldCount).map(reader.getField(_)).toVector
-  private val fieldNames: Vector[String] = fields.map(_.getName)
   private val rowCount = reader.getRecordCount()
   private var fetchedCount = 0
 

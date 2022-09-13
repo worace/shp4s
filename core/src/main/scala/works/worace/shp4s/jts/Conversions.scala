@@ -18,7 +18,7 @@ object Conversions {
         gf.createMultiPoint(pointsArr)
       }
       // MultiPointZ with Z and M values
-      case mpz @ MultiPointZ(_, points, zs, Some(m)) => {
+      case mpz @ MultiPointZ(_, points, _, Some(_)) => {
         val pointsArr = points
           .zip(mpz.zRangedValues.values)
           .zip(mpz.mRangedValues.get.values)
@@ -30,7 +30,7 @@ object Conversions {
         gf.createMultiPoint(pointsArr)
       }
       // MultiPointZ with only Z values
-      case mpz @ MultiPointZ(_, points, zs, None) => {
+      case mpz @ MultiPointZ(_, points, _, None) => {
         val pointsArr = points
           .zip(mpz.zRangedValues.values)
           .map {
@@ -44,13 +44,13 @@ object Conversions {
         val pointsArr = points.map { p => gf.createPoint(new jts.CoordinateXYM(p.x, p.y, p.m)) }.toArray
         gf.createMultiPoint(pointsArr)
       }
-      case pl @ PolyLine(_, lines) => pl.toJtsLineStringOrMultiLineString(gf)
-      case pl @ PolyLineZ(_, _, _, lines) => pl.toJtsLineStringOrMultiLineString(gf)
-      case pl @ PolyLineM(_, _, lines) => pl.toJtsLineStringOrMultiLineString(gf)
-      case p @ Polygon(_, rings)        => p.toJtsPolygonOrMultiPolygon(gf)
-      case p @ PolygonM(_, _, rings)    => p.toJtsPolygonOrMultiPolygon(gf)
-      case p @ PolygonZ(_, _, _, rings) => p.toJtsPolygonOrMultiPolygon(gf)
-      case NullShape => gf.createEmpty(0)
+      case pl @ PolyLine(_, _)        => pl.toJtsLineStringOrMultiLineString(gf)
+      case pl @ PolyLineZ(_, _, _, _) => pl.toJtsLineStringOrMultiLineString(gf)
+      case pl @ PolyLineM(_, _, _)    => pl.toJtsLineStringOrMultiLineString(gf)
+      case p @ Polygon(_, _)          => p.toJtsPolygonOrMultiPolygon(gf)
+      case p @ PolygonM(_, _, _)      => p.toJtsPolygonOrMultiPolygon(gf)
+      case p @ PolygonZ(_, _, _, _)   => p.toJtsPolygonOrMultiPolygon(gf)
+      case NullShape                  => gf.createEmpty(0)
     }
   }
 

@@ -4,7 +4,6 @@ import scodec.bits.BitVector
 import java.nio.file.{Files, Paths}
 import java.net.URL
 import java.nio.file.Path
-import scala.io.Source
 
 case class Resource(url: URL) {
   def bytes: Array[Byte] = Files.readAllBytes(Paths.get(url.getPath))

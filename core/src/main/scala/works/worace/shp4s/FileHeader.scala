@@ -31,7 +31,7 @@ object FileHeader extends ShpCodec[FileHeader] {
     fileLength :: version :: shapeType ::
     xMin :: yMin :: xMax :: yMax :: zMin :: zMax ::
     mMin :: mMax).xmap(
-    { case (_fc :: _ :: _ :: _ :: _ :: _ :: length :: _version ::
+    { case (_ :: _ :: _ :: _ :: _ :: _ :: length :: _ ::
       shapeType :: xMin :: yMin :: xMax :: yMax :: zMin :: zMax :: mMin :: mMax :: HNil) =>
       FileHeader(length, shapeType, xMin, xMax, yMin, yMax, zMin, zMax, mMin, mMax)
     },

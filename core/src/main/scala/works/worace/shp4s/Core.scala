@@ -3,12 +3,9 @@ package works.worace.shp4s
 import scodec.bits._
 import scodec._
 import scodec.codecs._
-import scodec.Attempt.Successful
-import shapeless.HNil
 import cats.effect.IO
 import scala.collection.immutable.{Stream => _, _}
 import java.nio.file.Path
-import shapeless.::
 import scala.util.Try
 import java.nio.file.Paths
 import fs2.io.file.Files
@@ -87,11 +84,15 @@ object Core {
     streamShapefile(Paths.get(path))
   }
 
-  private def readAllSyncFromPath(path: Path)(implicit runtime: cats.effect.unsafe.IORuntime = cats.effect.unsafe.implicits.global): Vector[Feature] = {
+  def readAllSyncFromPath(path: Path)(
+    implicit runtime: cats.effect.unsafe.IORuntime = cats.effect.unsafe.implicits.global
+  ): Vector[Feature] = {
     streamShapefile(path).compile.toVector.unsafeRunSync()
   }
 
-  def readAllSync(path: String)(implicit runtime: cats.effect.unsafe.IORuntime = cats.effect.unsafe.implicits.global): Vector[Feature] = {
+  def readAllSync(path: String)(
+    implicit runtime: cats.effect.unsafe.IORuntime = cats.effect.unsafe.implicits.global
+  ): Vector[Feature] = {
     readAllSyncFromPath(Paths.get(path))
   }
 

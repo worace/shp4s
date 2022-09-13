@@ -1,7 +1,6 @@
 package works.worace.shp4s
 
 import scodec.Codec
-import works.worace.shp4s.Core._
 import cats.effect.unsafe.implicits.global
 
 class CoreTest extends munit.FunSuite {
@@ -27,6 +26,7 @@ class CoreTest extends munit.FunSuite {
         .fixedSizeBits(recordHeader.value.bitLength, decoder)
         .decode(discriminator.remainder)
     } yield {
+      assertEquals(discriminator.value, discrim)
       test(shape.value)
     }
     t.toOption.getOrElse(fail(s"Expected succesful decoder. Got $t"))
@@ -49,7 +49,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("streaming points") {
-    val points = Core.readAllSync(TestFiles.points.path)
+    val points = Core.readAllSyncFromPath(TestFiles.points.path)
     assertEquals(points.size, 2539)
     val shapeTypes = points.map(_.shape).map(_.getClass.getName()).toSet
     assertEquals(shapeTypes, Set("works.worace.shp4s.Point"))
@@ -64,7 +64,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("MultiPointZ File") {
-    val mpzs = Core.readAllSync(TestFiles.multiPointZ.path)
+    val mpzs = Core.readAllSyncFromPath(TestFiles.multiPointZ.path)
     assertEquals(mpzs.size, 312)
     val types = mpzs.map(_.shape.getClass.getName).toSet
     assertEquals(types, Set("works.worace.shp4s.MultiPointZ"))
@@ -102,7 +102,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("polyline file") {
-    val pls = Core.readAllSync(TestFiles.polyLine.path)
+    val pls = Core.readAllSyncFromPath(TestFiles.polyLine.path)
     assertEquals(pls.size, 233)
     val types = pls.map(_.shape.getClass.getName).toSet
     assertEquals(types, Set("works.worace.shp4s.PolyLine"))
@@ -117,7 +117,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("Polygon file") {
-    val pls = Core.readAllSync(TestFiles.polygon.path)
+    val pls = Core.readAllSyncFromPath(TestFiles.polygon.path)
     assertEquals(pls.size, 10)
     val types = pls.map(_.shape.getClass.getName).toSet
     assertEquals(types, Set("works.worace.shp4s.Polygon"))
@@ -132,7 +132,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("MultiPoint File") {
-    val mps = Core.readAllSync(TestFiles.multiPoint.path)
+    val mps = Core.readAllSyncFromPath(TestFiles.multiPoint.path)
     assertEquals(mps.size, 2)
 
     val exp = Vector(
@@ -155,7 +155,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("PointZ File") {
-    val pzs = Core.readAllSync(TestFiles.pointZ.path)
+    val pzs = Core.readAllSyncFromPath(TestFiles.pointZ.path)
     assertEquals(pzs.size, 2)
     assertEquals(
       pzs.map(_.shape),
@@ -167,7 +167,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("PointZ with M") {
-    val pzs = Core.readAllSync(TestFiles.pointZM.path)
+    val pzs = Core.readAllSyncFromPath(TestFiles.pointZM.path)
     assertEquals(2, pzs.size)
     val exp = Vector(
       Feature(
@@ -185,7 +185,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("PointM") {
-    val pms = Core.readAllSync(TestFiles.pointM.path)
+    val pms = Core.readAllSyncFromPath(TestFiles.pointM.path)
     assertEquals(2, pms.size)
     val exp = Vector(
       Feature(
@@ -223,14 +223,14 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("PolygonZ File") {
-    val pzs = Core.readAllSync(TestFiles.polygonZ.path)
+    val pzs = Core.readAllSyncFromPath(TestFiles.polygonZ.path)
     assertEquals(pzs.size, 16)
     val ranges = pzs.map(_.shape.asInstanceOf[PolygonZ].zRange).toSet
     assert(ranges.contains(Range(19.0, 19.0)))
   }
 
   test("polylinez") {
-    val shps = Core.readAllSync(TestFiles.polyLineZ.path)
+    val shps = Core.readAllSyncFromPath(TestFiles.polyLineZ.path)
     val plzs = shps.map(_.shape.asInstanceOf[PolyLineZ])
     assertEquals(plzs.size, 3)
     assertEquals(plzs.map(_.lines.size), Vector(1, 1, 2))
@@ -265,12 +265,12 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("polylinezm") {
-    val shps = Core.readAllSync(TestFiles.polyLineZM.path)
+    val shps = Core.readAllSyncFromPath(TestFiles.polyLineZM.path)
     assertEquals(shps, TestData.polyLineZMContents)
   }
 
   test("polylinem") {
-    val shps = Core.readAllSync(TestFiles.polyLineM.path)
+    val shps = Core.readAllSyncFromPath(TestFiles.polyLineM.path)
     val exp = Vector(
       Feature(
         1,
@@ -292,12 +292,12 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("polygonm") {
-    val shps = Core.readAllSync(TestFiles.polygonM.path)
+    val shps = Core.readAllSyncFromPath(TestFiles.polygonM.path)
     assertEquals(shps, TestData.polygonMContents)
   }
 
   test("polygonzm") {
-    val shps = Core.readAllSync(TestFiles.polygonZM.path)
+    val shps = Core.readAllSyncFromPath(TestFiles.polygonZM.path)
     val exp = Vector(
       Feature(
         1,

@@ -1,7 +1,6 @@
 package works.worace.shp4s
 
 import scodec._
-import scodec.bits._
 import scodec.codecs._
 import shapeless.HNil
 import shapeless.::
@@ -24,7 +23,7 @@ private object Codecs {
 
   val multiPointM: Codec[MultiPointM] = (Codecs.bbox :: int32L)
     .flatPrepend {
-      case bbox :: numPoints :: HNil =>
+      case _ :: numPoints :: HNil =>
         vectorOfN(provide(numPoints), point) :: Util.rangedValues(numPoints)
     }
     .xmap(
@@ -42,15 +41,20 @@ private object Codecs {
 
   val multiPointZ: Codec[MultiPointZ] = (Codecs.bbox :: int32L)
     .flatPrepend {
-      case bbox :: numPoints :: HNil =>
-        vectorOfN(provide(numPoints), point) :: Util.rangedValues(numPoints) :: Util.ifAvailable(Util.rangedValues(numPoints), RangedValues.zero)
+      case _ :: numPoints :: HNil =>
+        vectorOfN(provide(numPoints), point) :: Util.rangedValues(numPoints) :: Util.ifAvailable(
+          Util.rangedValues(numPoints),
+          RangedValues.zero
+        )
     }
     .xmap(
       {
         case ((bbox :: _ :: HNil) :: points :: zVals :: mVals :: HNil) => {
           val pointZs = mVals match {
             case Some(mVals) => {
-              points.zip(zVals.values).zip(mVals.values).map { case ((point, z), m) => PointZ(point.x, point.y, z, Some(m)) }
+              points.zip(zVals.values).zip(mVals.values).map {
+                case ((point, z), m) => PointZ(point.x, point.y, z, Some(m))
+              }
             }
             case None => {
               points.zip(zVals.values).map { case (point, z) => PointZ(point.x, point.y, z, None) }
@@ -60,7 +64,8 @@ private object Codecs {
         }
       },
       (mp: MultiPointZ) => {
-        (mp.bbox :: mp.points.size :: HNil) :: mp.points.map(_.pointXY) :: mp.zRangedValues :: mp.mRangedValues :: HNil
+        (mp.bbox :: mp.points.size :: HNil) :: mp.points
+          .map(_.pointXY) :: mp.zRangedValues :: mp.mRangedValues :: HNil
       }
     )
 
@@ -158,7 +163,7 @@ private object Codecs {
         discriminated[Shape]
           .by(int32L)
           .subcaseO(ShapeType.nullShape) {
-            case n: NullShape.type => Some(NullShape)
+            case _: NullShape.type => Some(NullShape)
             case _                 => None
           }(Codecs.nullShape)
           .subcaseO(ShapeType.point) {
@@ -183,31 +188,31 @@ private object Codecs {
           }(Codecs.polygon)
           .subcaseO(ShapeType.pointZ) {
             case p: PointZ => Some(p)
-            case o         => None
+            case _         => None
           }(Codecs.pointZ)
           .subcaseO(ShapeType.polyLineZ) {
             case p: PolyLineZ => Some(p)
-            case o            => None
+            case _            => None
           }(Codecs.polyLineZ)
           .subcaseO(ShapeType.polygonZ) {
             case p: PolygonZ => Some(p)
-            case o           => None
+            case _           => None
           }(Codecs.polygonZ)
           .subcaseO(ShapeType.pointM) {
             case p: PointM => Some(p)
-            case o         => None
+            case _         => None
           }(Codecs.pointM)
           .subcaseO(ShapeType.polyLineM) {
             case s: PolyLineM => Some(s)
-            case o            => None
+            case _            => None
           }(Codecs.polyLineM)
           .subcaseO(ShapeType.polygonM) {
             case s: PolygonM => Some(s)
-            case o           => None
+            case _           => None
           }(Codecs.polygonM)
           .subcaseO(ShapeType.multiPointM) {
             case s: MultiPointM => Some(s)
-            case o              => None
+            case _              => None
           }(Codecs.multiPointM)
       ).hlist
     }
