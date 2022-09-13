@@ -30,4 +30,11 @@ object TestFiles {
   val polyLineM = Resource("polylinem.shp")
   val polygonM = Resource("polygonm.shp")
   val polygonZM = Resource("polygonzm.shp")
+  // Test files copied from GDAL test suite
+  // https://github.com/OSGeo/gdal/tree/master/autotest/ogr/data/shp
+  val gdalGjMultiPoly = Resource("gjmultipoly.shp")
+
+  // https://gis-pdx.opendata.arcgis.com/datasets/PDX::zip-code-boundaries
+  // City of portland zipcode boundaries -- multipolygons with holes
+  val portlandZips = Resource("Zip_Code_Boundaries.shp")
 }
