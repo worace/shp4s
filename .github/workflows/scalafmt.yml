@@ -1,4 +1,4 @@
-name: Scalafmt
+name: Linter
 on:
   push:
 jobs:
@@ -14,3 +14,5 @@ jobs:
         java-version: 8
     - name: Scalafmt Check
       run: sbt scalafmtCheck
+    - name: Scalafix Check
+      run: "sbt 'scalafixAll --check'"

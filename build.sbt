@@ -10,7 +10,9 @@ val commonSettings = Seq(
   crossScalaVersions := Seq("2.12.11", "2.13.1"),
   scalaVersion := "2.13.1",
   testFrameworks += new TestFramework("munit.Framework"),
-  scalacOptions ++= Seq("-Xfatal-warnings", "-feature", "-deprecation"),
+  scalacOptions ++= Seq("-Xfatal-warnings", "-feature", "-deprecation", "-Ywarn-unused"),
+  semanticdbEnabled := true,
+  semanticdbVersion := scalafixSemanticdb.revision,
   licenses := Seq("APL2" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
   developers := List(
     Developer(
@@ -76,3 +78,5 @@ lazy val docs = project
   )
 
 Global / onChangedBuildSource := ReloadOnSourceChanges
+
+addCommandAlias("lint", ";scalafixAll;scalafmtAll")
