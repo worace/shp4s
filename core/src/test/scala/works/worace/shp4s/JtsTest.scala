@@ -5,7 +5,7 @@ import org.locationtech.jts.{geom => jts}
 class JtsTest extends munit.FunSuite {
   test("converting polygon") {
     val shps = Core.readAllSyncFromPath(TestFiles.polygonZM.path)
-    val exp = Vector(
+    Vector(
       Feature(
         1,
         PolygonZ(
@@ -52,7 +52,7 @@ class JtsTest extends munit.FunSuite {
     val polys = shps.map(_.shape.asInstanceOf[Polygon])
 
     val ringCounts = polys.map(_.rings.size).toSet
-    assertEquals(ringCounts, Set(1,2,3,4))
+    assertEquals(ringCounts, Set(1, 2, 3, 4))
 
     val single = polys.find(_.rings.size == 1).get
     val singleConv = Jts.shapeToJts(single)
@@ -66,9 +66,9 @@ class JtsTest extends munit.FunSuite {
     val quadConv = Jts.shapeToJts(quad)
     assertEquals(quadConv.getGeometryType, "MultiPolygon")
     assertEquals(quadConv.asInstanceOf[jts.MultiPolygon].getNumGeometries, 2)
-    val poly1 = quadConv.asInstanceOf[jts.MultiPolygon].getGeometryN(0)
-    val poly2 = quadConv.asInstanceOf[jts.MultiPolygon].getGeometryN(1)
-    val quadIdx = polys.indexWhere(_.rings.size == 4)
+    quadConv.asInstanceOf[jts.MultiPolygon].getGeometryN(0)
+    quadConv.asInstanceOf[jts.MultiPolygon].getGeometryN(1)
+    polys.indexWhere(_.rings.size == 4)
 
     // postcode with highway separating 2 halves -- 2x outer rings
     val beaverCreek = shps.find(_.properties("ZIPCODE") == DBFString("97004")).get

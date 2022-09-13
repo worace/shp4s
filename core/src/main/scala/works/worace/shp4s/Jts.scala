@@ -13,21 +13,35 @@ object Jts {
   val DEFAULT_PRECISION_MODEl = new jts.PrecisionModel(jts.PrecisionModel.FLOATING)
   object implicits {
     implicit class ShpShapeToJts(shape: Shape) {
-      def toJts(srid: Int = 0, precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl): Geometry =
+      def toJts(
+        srid: Int = 0,
+        precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl
+      ): Geometry =
         shapeToJts(shape, srid, precisionModel)
     }
 
     implicit class ShpFeatureToJts(feature: Feature) {
-      def toJts(srid: Int = 0, precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl): JtsFeature =
+      def toJts(
+        srid: Int = 0,
+        precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl
+      ): JtsFeature =
         featureToJts(feature, srid, precisionModel)
     }
   }
 
-  def featureToJts(feature: Feature, srid: Int = 0, precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl): JtsFeature = {
+  def featureToJts(
+    feature: Feature,
+    srid: Int = 0,
+    precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl
+  ): JtsFeature = {
     JtsFeature(shapeToJts(feature.shape, srid, precisionModel), feature.properties)
   }
 
-  def shapeToJts(shape: Shape, srid: Int = 0, precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl): Geometry = {
+  def shapeToJts(
+    shape: Shape,
+    srid: Int = 0,
+    precisionModel: jts.PrecisionModel = DEFAULT_PRECISION_MODEl
+  ): Geometry = {
     val pm = precisionModel
     val gf = new jts.GeometryFactory(pm, srid)
     // new jts.Point(0, 0)
@@ -155,5 +169,5 @@ object Jts {
     gf.createPoint(point.toJtsCoord)
   }
 
-  private val defaultPM = new jts.PrecisionModel(jts.PrecisionModel.FLOATING)
+  new jts.PrecisionModel(jts.PrecisionModel.FLOATING)
 }
