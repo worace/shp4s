@@ -49,6 +49,7 @@ lazy val root = Project(
     ghpagesNoJekyll := true,
     credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credentials"),
     usePgpKeyHex("37169035A8BEDF1EC943E79308109B5E42E0C41D"),
+    publishArtifact := false,
   )
 
 lazy val core = project
@@ -58,6 +59,7 @@ lazy val core = project
     description := "Scodec based pure Scala Shapefile decoder"
   )
   .settings(
+    publishArtifact := true,
     libraryDependencies ++= Seq(
       "org.scodec" %% "scodec-core" % "1.11.10",
       "co.fs2" %% "fs2-scodec" % "3.2.14",

@@ -95,8 +95,7 @@ feature.toJts() // JtsFeature(...)
 ## Releasing
 
 * Set version in `build.sbt` to next non-SNAPSHOT
-* Make sure GPG and sonatype credentials are available -- `~/.sbt/sonatype_credentials`, `$PGP_PASSPHRASE`, and appropriate key as specified in `build.sbt`
-* Run `sbt +publishSigned`
+* Run `sbt +publish`
 * Open sonatype staging repository: https://oss.sonatype.org/#stagingRepositories and complete the release
   * Check contents (should have a 2.13 and 2.12 version for each module)
   * "close" the release, then "release" using sonatype UI options
