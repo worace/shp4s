@@ -18,14 +18,14 @@ private object Codecs {
   )
 
   val multiPoint =
-    (bbox :: int32L.consume(numPoints => vectorOfN(provide(numPoints), Point.codec))(points =>
+    (bbox :: int32L.consume(numPoints => vectorOfN(provide(numPoints), point))(points =>
       points.size
     )).as[MultiPoint]
 
   val multiPointM: Codec[MultiPointM] = (Codecs.bbox :: int32L)
     .flatPrepend {
       case bbox :: numPoints :: HNil =>
-        vectorOfN(provide(numPoints), Point.codec) :: Util.rangedValues(numPoints)
+        vectorOfN(provide(numPoints), point) :: Util.rangedValues(numPoints)
     }
     .xmap(
       {
@@ -68,7 +68,7 @@ private object Codecs {
     .flatPrepend { h => vectorOfN(provide(h.numParts), int32L).hlist }
     .flatPrepend {
       case h :: _ =>
-        vectorOfN(provide(h.numPoints), Point.codec).hlist
+        vectorOfN(provide(h.numPoints), point).hlist
     }
     .xmap(
       {

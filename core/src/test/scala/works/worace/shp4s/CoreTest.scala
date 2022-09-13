@@ -57,7 +57,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("MultiPointZ") {
-    shapeTest(TestFiles.multiPointZ, ShapeType.multiPointZ, MultiPointZ.codec) { mpz =>
+    shapeTest(TestFiles.multiPointZ, ShapeType.multiPointZ, Codecs.multiPointZ) { mpz =>
       val bb = BBox(431478.25, 141891.97, 431478.25, 141891.97)
       assertEquals(mpz.bbox, bb)
       assertEquals(mpz.points.head, Point(431478.25, 141891.97))
@@ -127,7 +127,7 @@ class CoreTest extends munit.FunSuite {
   }
 
   test("PointZ") {
-    shapeTest(TestFiles.pointZ, ShapeType.pointZ, PointZ.codec) { shp =>
+    shapeTest(TestFiles.pointZ, ShapeType.pointZ, Codecs.pointZ) { shp =>
       assertEquals(shp, PointZ(1.0, 2.0, -3.0, None))
     }
   }
