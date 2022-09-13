@@ -69,7 +69,7 @@ object Core {
     }
   }
 
-  def streamShapeRecords(shpStream: fs2.Stream[IO, Byte]): fs2.Stream[IO, ShapeRecord] = {
+  private def streamShapeRecords(shpStream: fs2.Stream[IO, Byte]): fs2.Stream[IO, ShapeRecord] = {
     shpStream
       .drop(HEADER_SIZE)
       .through(Codecs.shpStream.toPipeByte)
@@ -87,12 +87,12 @@ object Core {
     streamShapefile(Paths.get(path))
   }
 
-  def readAllSync(path: Path)(implicit runtime: cats.effect.unsafe.IORuntime): Vector[Feature] = {
+  private def readAllSyncFromPath(path: Path)(implicit runtime: cats.effect.unsafe.IORuntime = cats.effect.unsafe.implicits.global): Vector[Feature] = {
     streamShapefile(path).compile.toVector.unsafeRunSync()
   }
 
-  def readAllSync(path: String)(implicit runtime: cats.effect.unsafe.IORuntime): Vector[Feature] = {
-    readAllSync(Paths.get(path))
+  def readAllSync(path: String)(implicit runtime: cats.effect.unsafe.IORuntime = cats.effect.unsafe.implicits.global): Vector[Feature] = {
+    readAllSyncFromPath(Paths.get(path))
   }
 
   def readHeader(bytes: Array[Byte]): Try[FileHeader] = {
