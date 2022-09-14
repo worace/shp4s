@@ -1,17 +1,18 @@
 ThisBuild / scalaVersion := "2.13.1"
 
 val commonSettings = Seq(
-  organization := "works.worace",
-  homepage := Some(url("https://github.com/worace/shp4s")),
   libraryDependencies ++= Seq(
     "org.scalameta" %% "munit" % "0.7.1" % Test
   ),
-  crossScalaVersions := Seq("2.12.11", "2.13.1"),
-  scalaVersion := "2.13.1",
-  testFrameworks += new TestFramework("munit.Framework"),
-  scalacOptions ++= Seq("-feature", "-deprecation", "-Ywarn-unused"),
   semanticdbEnabled := true,
   semanticdbVersion := scalafixSemanticdb.revision,
+  testFrameworks += new TestFramework("munit.Framework"),
+  scalacOptions ++= Seq("-feature", "-deprecation", "-Ywarn-unused"),
+  scalaVersion := "2.13.1",
+  crossScalaVersions := Seq("2.12.11", "2.13.1"),
+  // Publish-related settings
+  organization := "works.worace",
+  homepage := Some(url("https://github.com/worace/shp4s")),
   licenses := Seq("APL2" -> url("https://www.apache.org/licenses/LICENSE-2.0.txt")),
   developers := List(
     Developer(
@@ -69,7 +70,7 @@ addCommandAlias("lint", ";scalafixAll;scalafmtAll")
 addCommandAlias("ci", "+test;scalafmtCheck;scalafixAll --check")
 // SBT dynver/sonatype release
 // To publish a git-tagged snapshot, just run:
-addCommandAlias("release", "+publishSigned;")
+addCommandAlias("release", "+publishSigned;sonatypeRelease")
 // To publish a 'real' version, tag the current commit with a tag matching vX.Y.Z
 // e.g. git tag v0.2.0
 // then run sbt release
