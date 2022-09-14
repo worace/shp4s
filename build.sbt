@@ -1,7 +1,6 @@
 ThisBuild / scalaVersion := "2.13.1"
 
 val commonSettings = Seq(
-  version := "0.2.0",
   organization := "works.worace",
   homepage := Some(url("https://github.com/worace/shp4s")),
   libraryDependencies ++= Seq(
@@ -22,6 +21,8 @@ val commonSettings = Seq(
       url("https://worace.works")
     )
   ),
+  ThisBuild / pomIncludeRepository := { _ => false },
+  ThisBuild / publishMavenStyle := true,
   publishTo := sonatypePublishTo.value,
 )
 
