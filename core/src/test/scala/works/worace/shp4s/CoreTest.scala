@@ -320,4 +320,10 @@ class CoreTest extends munit.FunSuite {
     )
     assertEquals(shps, exp)
   }
+
+  test("census shp file") {
+    val shps = Core.readAllSyncFromPath(TestFiles.census.path)
+    assertEquals(shps.size, 565)
+    assertEquals(shps.head.shape.asInstanceOf[Polygon].bbox, BBox(-170.590256,-14.254239,-170.576753,-14.197597))
+  }
 }
