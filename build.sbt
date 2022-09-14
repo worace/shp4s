@@ -67,3 +67,9 @@ Global / onChangedBuildSource := ReloadOnSourceChanges
 
 addCommandAlias("lint", ";scalafixAll;scalafmtAll")
 addCommandAlias("ci", "+test;scalafmtCheck;scalafixAll --check")
+// SBT dynver/sonatype release
+// To publish a git-tagged snapshot, just run:
+addCommandAlias("release", "+publishSigned;")
+// To publish a 'real' version, tag the current commit with a tag matching vX.Y.Z
+// e.g. git tag v0.2.0
+// then run sbt release
