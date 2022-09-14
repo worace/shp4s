@@ -9,7 +9,7 @@ Based on scodec and fs2.
 Published for Scala 2.12 and 2.13
 
 ```scala
-libraryDependencies += "works.worace" %% "shp4s-core" % "0.1.0"
+libraryDependencies += "works.worace" %% "shp4s-core" % "0.2.1"
 ```
 
 ### Basic Decoding
